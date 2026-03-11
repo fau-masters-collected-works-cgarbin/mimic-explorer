@@ -1,3 +1,6 @@
+# Obsidian vault symlink
+obsidian-vault
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
