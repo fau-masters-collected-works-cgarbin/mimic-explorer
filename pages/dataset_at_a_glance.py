@@ -12,6 +12,7 @@ if "dataset" not in st.session_state:
     st.stop()
 
 dataset: DatasetConfig = st.session_state["dataset"]
+st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 

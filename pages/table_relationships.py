@@ -12,6 +12,7 @@ if "dataset" not in st.session_state:
     st.stop()
 
 dataset: DatasetConfig = st.session_state["dataset"]
+st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
@@ -47,7 +48,7 @@ table_keys = scan_join_keys(dataset.name, {k: str(v) for k, v in tables.items()}
 st.subheader("How tables connect")
 
 st.markdown(f"""
-MIMIC is organized around a three-level hierarchy. Every table connects to at least one of
+{dataset.name} is organized around a three-level hierarchy. Every table connects to at least one of
 these identifiers, and understanding this hierarchy is the key to joining tables correctly.
 
 - **`subject_id`** identifies a unique patient. Every clinical table has this.
