@@ -26,7 +26,7 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
   ```
 - After pushing, update the local main branch from the main working directory:
   ```bash
-  git fetch origin && git reset main origin/main
+  git fetch origin && git merge --ff-only origin/main
   ```
 - Sync with main before starting significant new work in a long-running worktree, to avoid large conflict sets at merge time.
 
