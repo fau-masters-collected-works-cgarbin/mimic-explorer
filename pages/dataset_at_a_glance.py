@@ -141,23 +141,23 @@ st.divider()
 st.subheader("What do these numbers mean?")
 
 st.markdown(f"""
-**{metrics['total_patients']:,} patients** had **{metrics['total_admissions']:,} hospital
-admissions** between {metrics['min_admit']} and {metrics['max_admit']}. That's roughly
-{metrics['total_admissions'] / metrics['total_patients']:.1f} admissions per patient on average,
+**{metrics["total_patients"]:,} patients** had **{metrics["total_admissions"]:,} hospital
+admissions** between {metrics["min_admit"]} and {metrics["max_admit"]}. That's roughly
+{metrics["total_admissions"] / metrics["total_patients"]:.1f} admissions per patient on average,
 meaning some patients were readmitted multiple times.
 
-**Hospital mortality rate of {metrics['mortality_pct']}%** means this fraction of admissions ended
+**Hospital mortality rate of {metrics["mortality_pct"]}%** means this fraction of admissions ended
 in death during the hospital stay. This is an ICU-centric dataset, so the mortality rate is higher
 than a general hospital population.
 
-**Median hospital stay of {metrics['median_los']} days** is the midpoint: half of all admissions
+**Median hospital stay of {metrics["median_los"]} days** is the midpoint: half of all admissions
 were shorter, half were longer. The median is more useful than the mean here because a few very long
 stays would skew an average upward.
 """)
 
 if metrics["total_icu_stays"] is not None and metrics["median_icu_los"] is not None:
     st.markdown(f"""
-**{metrics['total_icu_stays']:,} ICU stays** with a **median of {metrics['median_icu_los']} days**.
+**{metrics["total_icu_stays"]:,} ICU stays** with a **median of {metrics["median_icu_los"]} days**.
 A single hospital admission can involve multiple ICU stays (e.g., a patient transferred out of the
 ICU and later readmitted to it).
 """)
