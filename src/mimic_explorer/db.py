@@ -41,3 +41,13 @@ def sample_rows(
 ) -> "duckdb.DuckDBPyRelation":
     """Return a sample of rows from a CSV.gz file as a DuckDB relation."""
     return conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT {limit}")
+
+
+def scalar_query(conn: duckdb.DuckDBPyConnection, sql: str) -> object:
+    """Run a SQL query and return the single scalar result.
+
+    The SQL should reference tables via table_ref(), e.g.:
+        scalar_query(conn, f"SELECT count(*) FROM {table_ref(path)}")
+    """
+    result = conn.execute(sql).fetchone()
+    return result[0] if result else None

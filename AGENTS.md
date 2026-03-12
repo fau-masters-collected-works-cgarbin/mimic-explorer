@@ -6,11 +6,12 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 
 ## Architecture
 
-- `app.py` -- Streamlit entry point, dataset selector sidebar. UI only.
+- `app.py` -- Streamlit entry point, dataset selector sidebar, `st.navigation()` page routing. UI only.
 - `src/mimic_explorer/config.py` -- Dataset path configuration, table discovery. No UI imports.
 - `src/mimic_explorer/db.py` -- DuckDB connection, `table_ref()` resolver, query helpers. No UI imports.
-- `pages/1_schema_overview.py` -- Table list with row counts and column info. UI only, uses db and config.
-- `pages/2_table_browser.py` -- Sample rows, column stats, filter/sort. UI only, uses db and config.
+- `pages/dataset_at_a_glance.py` -- Key dataset metrics and contextual explanations for newcomers. UI only, uses db and config.
+- `pages/schema_overview.py` -- Table list with row counts and column info. UI only, uses db and config.
+- `pages/table_browser.py` -- Sample rows, column stats, filter/sort. UI only, uses db and config.
 
 ## Setup
 
@@ -48,7 +49,7 @@ Pre-commit hooks run ruff automatically on commit.
 - Type hints on function signatures in logic modules (`config.py`, `db.py`).
 - Annotations optional in Streamlit pages and `app.py`.
 - S608 (SQL injection) suppressed for DuckDB file reads -- all SQL is built from local file paths, not user input.
-- N999 suppressed for pages -- Streamlit requires numeric prefixes for page ordering.
+- Page ordering is controlled via `st.navigation()` in `app.py`, not filename prefixes. Pages must not call `st.set_page_config()`.
 
 ## Testing philosophy
 

@@ -7,7 +7,6 @@ import streamlit as st
 from mimic_explorer.config import LARGE_TABLES, DatasetConfig
 from mimic_explorer.db import column_info, get_connection, row_count
 
-st.set_page_config(page_title="Schema Overview", page_icon="📋", layout="wide")
 st.title("Schema Overview")
 
 if "dataset" not in st.session_state:

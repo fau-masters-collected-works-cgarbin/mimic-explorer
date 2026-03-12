@@ -2,7 +2,14 @@
 
 from pathlib import Path
 
-from mimic_explorer.db import column_info, get_connection, row_count, sample_rows, table_ref
+from mimic_explorer.db import (
+    column_info,
+    get_connection,
+    row_count,
+    sample_rows,
+    scalar_query,
+    table_ref,
+)
 
 
 def test_table_ref_produces_valid_sql():
@@ -43,3 +50,17 @@ def test_sample_rows_respects_limit(sample_csv_gz):
     result = sample_rows(conn, sample_csv_gz, limit=1)
     df = result.fetchdf()
     assert len(df) == 1
+
+
+def test_scalar_query(sample_csv_gz):
+    conn = get_connection()
+    ref = table_ref(sample_csv_gz)
+    result = scalar_query(conn, f"SELECT count(*) FROM {ref}")
+    assert result == 3
+
+
+def test_scalar_query_with_aggregate(sample_csv_gz):
+    conn = get_connection()
+    ref = table_ref(sample_csv_gz)
+    result = scalar_query(conn, f"SELECT max(subject_id) FROM {ref}")
+    assert result == 3

@@ -42,12 +42,13 @@ ignore = [
     "S101",    # assert allowed in tests
     "PLR2004", # magic values allowed in tests
     "ANN",     # annotations optional in tests
+    "S608",    # SQL injection false positives (DuckDB read_csv_auto on local files)
 ]
 "pages/**/*.py" = [
     "ANN",     # annotations optional in Streamlit pages
     "T201",    # print allowed in pages (streamlit uses it)
     "S608",    # SQL injection false positives (DuckDB read_csv_auto on local files)
-    "N999",    # Streamlit requires numeric prefixes for page ordering
+
 ]
 "app.py" = [
     "ANN",     # annotations optional in app entry point

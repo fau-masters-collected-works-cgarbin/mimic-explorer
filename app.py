@@ -1,12 +1,10 @@
-"""MIMIC Explorer -- Streamlit entry point with dataset selector."""
+"""MIMIC Explorer -- Streamlit entry point with dataset selector and navigation."""
 
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
 
 st.set_page_config(page_title="MIMIC Explorer", page_icon="🏥", layout="wide")
-
-st.title("MIMIC Explorer")
 
 # Dataset selector in sidebar
 dataset_key = st.sidebar.selectbox(
@@ -27,11 +25,13 @@ if not dataset.base_path.exists():
 st.session_state["dataset_key"] = dataset_key
 st.session_state["dataset"] = dataset
 
-st.markdown(f"**Active dataset:** {dataset.name}")
-st.markdown(f"**Data path:** `{dataset.base_path}`")
+# Define page order explicitly -- no numeric prefixes needed
+pages = st.navigation(
+    [
+        st.Page("pages/dataset_at_a_glance.py", title="Dataset at a Glance", icon="📊"),
+        st.Page("pages/schema_overview.py", title="Schema Overview", icon="📋"),
+        st.Page("pages/table_browser.py", title="Table Browser", icon="🔍"),
+    ]
+)
 
-tables = dataset.find_tables()
-st.markdown(f"**Tables found:** {len(tables)}")
-
-st.divider()
-st.markdown("Use the sidebar to navigate to different pages.")
+pages.run()
