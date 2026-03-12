@@ -80,7 +80,10 @@ if diagnoses_ref and d_diag_ref:
 
     df_diag = top_diagnoses(dataset.name, diagnoses_ref, d_diag_ref, icd_join, title_col)
     fig = px.bar(
-        df_diag, x="count", y="diagnosis", orientation="h",
+        df_diag,
+        x="count",
+        y="diagnosis",
+        orientation="h",
         labels={"count": "Admissions", "diagnosis": ""},
     )
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
@@ -106,7 +109,10 @@ if procedures_ref and d_proc_ref:
 
     df_proc = top_procedures(dataset.name, procedures_ref, d_proc_ref, icd_join, title_col)
     fig = px.bar(
-        df_proc, x="count", y="procedure", orientation="h",
+        df_proc,
+        x="count",
+        y="procedure",
+        orientation="h",
         labels={"count": "Admissions", "procedure": ""},
     )
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
@@ -135,7 +141,10 @@ if labevents_ref and d_lab_ref:
 
     df_labs = top_labs(dataset.name, labevents_ref, d_lab_ref, itemid_col, label_col)
     fig = px.bar(
-        df_labs, x="count", y="lab_test", orientation="h",
+        df_labs,
+        x="count",
+        y="lab_test",
+        orientation="h",
         labels={"count": "Measurements (sampled)", "lab_test": ""},
     )
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
@@ -212,7 +221,9 @@ if patients_ref and admissions_ref:
 
     df_age = age_dist(dataset.name, patients_ref, admissions_ref, is_mimic3)
     fig = px.histogram(
-        df_age, x="age", nbins=40,
+        df_age,
+        x="age",
+        nbins=40,
         labels={"age": "Age (years)", "count": "Count"},
     )
     fig.update_layout(height=350)
@@ -250,7 +261,9 @@ if admissions_ref:
 
     df_los = los_dist(dataset.name, admissions_ref, admit_col, disch_col)
     fig = px.histogram(
-        df_los, x="los_days", nbins=100,
+        df_los,
+        x="los_days",
+        nbins=100,
         labels={"los_days": "Length of Stay (days)", "count": "Admissions"},
         range_x=[0, 60],
     )
