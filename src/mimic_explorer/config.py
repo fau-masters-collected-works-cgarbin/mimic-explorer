@@ -55,4 +55,12 @@ DATASETS: dict[str, DatasetConfig] = {
 }
 
 # Tables that are very large and slow to count -- skip by default in row count operations
-LARGE_TABLES = frozenset({"chartevents", "labevents", "inputevents_cv", "inputevents_mv"})
+LARGE_TABLES = frozenset(
+    {
+        "chartevents",
+        "labevents",
+        "inputevents_cv",
+        "inputevents_mv",
+        "noteevents",
+    }
+)

@@ -12,16 +12,10 @@ st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
-
-def get_table(name):
-    """Look up a table path by lowercase name, or None if missing."""
-    return tables.get(name)
-
-
 # Key table paths
-patients_path = get_table("patients")
-admissions_path = get_table("admissions")
-icustays_path = get_table("icustays")
+patients_path = tables.get("patients")
+admissions_path = tables.get("admissions")
+icustays_path = tables.get("icustays")
 
 if not patients_path or not admissions_path:
     st.error("Could not find PATIENTS or ADMISSIONS tables in this dataset.")

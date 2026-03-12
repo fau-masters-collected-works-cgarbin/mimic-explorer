@@ -5,6 +5,7 @@ from pathlib import Path
 from mimic_explorer.db import (
     column_info,
     get_connection,
+    resolve_refs,
     row_count,
     sample_rows,
     scalar_query,
@@ -62,3 +63,10 @@ def test_scalar_query_with_aggregate(sample_csv_gz):
     ref = table_ref(sample_csv_gz)
     result = scalar_query(conn, f"SELECT max(subject_id) FROM {ref}")
     assert result == 3
+
+
+def test_resolve_refs(sample_csv_gz):
+    tables = {"test_table": sample_csv_gz}
+    refs = resolve_refs(tables, ["test_table", "missing_table"])
+    assert "read_csv_auto" in refs["test_table"]
+    assert refs["missing_table"] is None
