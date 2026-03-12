@@ -20,7 +20,7 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 
 ```bash
 uv sync --all-groups
-prek install  # or: pre-commit install
+pre-commit install
 ```
 
 ## Running the app
