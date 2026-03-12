@@ -1,8 +1,15 @@
 """DuckDB connection and query helpers for reading MIMIC CSV.gz files."""
 
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import duckdb
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pandas as pd
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
@@ -38,9 +45,9 @@ def sample_rows(
     conn: duckdb.DuckDBPyConnection,
     file_path: Path,
     limit: int = 100,
-) -> "duckdb.DuckDBPyRelation":
-    """Return a sample of rows from a CSV.gz file as a DuckDB relation."""
-    return conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT {limit}")
+) -> pd.DataFrame:
+    """Return a sample of rows from a CSV.gz file as a DataFrame."""
+    return conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT {limit}").fetchdf()
 
 
 def scalar_query(conn: duckdb.DuckDBPyConnection, sql: str) -> object:

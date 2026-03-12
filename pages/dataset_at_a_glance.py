@@ -117,7 +117,7 @@ st.markdown(
 col1, col2, col3 = st.columns(3)
 col1.metric("Patients", f"{metrics['total_patients']:,}")
 col2.metric("Hospital Admissions", f"{metrics['total_admissions']:,}")
-if metrics["total_icu_stays"]:
+if metrics["total_icu_stays"] is not None:
     col3.metric("ICU Stays", f"{metrics['total_icu_stays']:,}")
 
 # Row 2: Key rates
@@ -133,7 +133,7 @@ col3.metric(
 col1, col2, col3 = st.columns(3)
 col1.metric("Date Range", f"{metrics['min_admit']} to {metrics['max_admit']}")
 col2.metric("Median Hospital Stay", f"{metrics['median_los']} days")
-if metrics["median_icu_los"]:
+if metrics["median_icu_los"] is not None:
     col3.metric("Median ICU Stay", f"{metrics['median_icu_los']} days")
 
 # Contextual explanations for newcomers
@@ -155,7 +155,7 @@ were shorter, half were longer. The median is more useful than the mean here bec
 stays would skew an average upward.
 """)
 
-if metrics["total_icu_stays"] and metrics["median_icu_los"]:
+if metrics["total_icu_stays"] is not None and metrics["median_icu_los"] is not None:
     st.markdown(f"""
 **{metrics['total_icu_stays']:,} ICU stays** with a **median of {metrics['median_icu_los']} days**.
 A single hospital admission can involve multiple ICU stays (e.g., a patient transferred out of the
