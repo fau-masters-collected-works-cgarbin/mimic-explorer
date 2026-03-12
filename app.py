@@ -33,6 +33,7 @@ pages = st.navigation(
         st.Page("pages/clinical_insights.py", title="Clinical Insights", icon="🩺"),
         st.Page("pages/schema_overview.py", title="Schema Overview", icon="📋"),
         st.Page("pages/table_browser.py", title="Table Browser", icon="🔍"),
+        st.Page("pages/community_references.py", title="Community References", icon="📚"),
     ]
 )
 
