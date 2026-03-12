@@ -120,10 +120,31 @@ if patient_only:
     patients -> patient_tables [style=dashed, label="subject_id"];
 """
 
-if no_keys:
-    dot += f"""
-    dict_tables [label="{dict_label}"];
-"""
+# Dictionary/lookup table relationships -- connect to the clinical tables they describe
+DICT_LINKS_MIMIC3 = {
+    "d_icd_diagnoses": [("admission_tables", "ICD9_CODE")],
+    "d_icd_procedures": [("admission_tables", "ICD9_CODE")],
+    "d_labitems": [("admission_tables", "ITEMID")],
+    "d_items": [("icu_tables", "ITEMID")],
+    "d_cpt": [("admission_tables", "CPT_CD")],
+    "caregivers": [("icu_tables", "CGID")],
+}
+DICT_LINKS_MIMIC4 = {
+    "d_icd_diagnoses": [("admission_tables", "icd_code")],
+    "d_icd_procedures": [("admission_tables", "icd_code")],
+    "d_labitems": [("admission_tables", "itemid")],
+    "d_items": [("icu_tables", "itemid")],
+    "d_hcpcs": [("admission_tables", "hcpcs_cd")],
+    "caregiver": [("icu_tables", "caregiver_id")],
+}
+dict_links = DICT_LINKS_MIMIC3 if is_mimic3 else DICT_LINKS_MIMIC4
+
+for tbl in no_keys:
+    safe_id = tbl.replace("-", "_")
+    dot += f'    {safe_id} [label="{tbl}", shape=note, fillcolor="#fafafa", fontsize=10];\n'
+    if tbl in dict_links:
+        for target, key in dict_links[tbl]:
+            dot += f'    {safe_id} -> {target} [style=dotted, label="{key}", fontsize=9];\n'
 
 dot += "}"
 st.graphviz_chart(dot)
