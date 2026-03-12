@@ -7,7 +7,6 @@ import streamlit as st
 from mimic_explorer.config import LARGE_TABLES, DatasetConfig
 from mimic_explorer.db import get_connection, table_ref
 
-st.set_page_config(page_title="Table Browser", page_icon="🔍", layout="wide")
 st.title("Table Browser")
 
 if "dataset" not in st.session_state:
