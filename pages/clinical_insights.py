@@ -70,7 +70,7 @@ if diagnoses_ref and d_diag_ref:
     st.caption("Most frequently assigned diagnosis codes across all admissions.")
 
     @st.cache_data(show_spinner="Querying diagnoses...")
-    def top_diagnoses(_ds):
+    def top_diagnoses(ds):
         conn = get_connection()
         return conn.execute(f"""
             SELECT d."{title_col}" AS diagnosis, count(*) AS count
@@ -96,7 +96,7 @@ if procedures_ref and d_proc_ref:
     st.caption("Most frequently recorded procedure codes across all admissions.")
 
     @st.cache_data(show_spinner="Querying procedures...")
-    def top_procedures(_ds):
+    def top_procedures(ds):
         conn = get_connection()
         return conn.execute(f"""
             SELECT d."{title_col}" AS procedure, count(*) AS count
@@ -125,7 +125,7 @@ if labevents_ref and d_lab_ref:
     )
 
     @st.cache_data(show_spinner="Sampling lab events (this may take a moment)...")
-    def top_labs(_ds):
+    def top_labs(ds):
         conn = get_connection()
         return conn.execute(f"""
             SELECT d."{label_col}" AS lab_test, count(*) AS count
@@ -153,7 +153,7 @@ if patients_ref and admissions_ref:
 
     # Gender distribution
     @st.cache_data(show_spinner="Computing gender distribution...")
-    def gender_dist(_ds):
+    def gender_dist(ds):
         conn = get_connection()
         return conn.execute(f"""
             SELECT "{gender_col}" AS gender, count(*) AS count
@@ -171,7 +171,7 @@ if patients_ref and admissions_ref:
 
     # Race/ethnicity distribution
     @st.cache_data(show_spinner="Computing race/ethnicity distribution...")
-    def race_dist(_ds):
+    def race_dist(ds):
         conn = get_connection()
         return conn.execute(f"""
             SELECT "{race_col}" AS race, count(*) AS count
@@ -192,7 +192,7 @@ if patients_ref and admissions_ref:
     st.markdown("**Age distribution at admission**")
 
     @st.cache_data(show_spinner="Computing age distribution...")
-    def age_dist(_ds):
+    def age_dist(ds):
         conn = get_connection()
         if is_mimic3:
             # MIMIC-III: compute age from DOB and first admission time.
@@ -239,7 +239,7 @@ if admissions_ref:
     st.subheader("Hospital Length of Stay")
 
     @st.cache_data(show_spinner="Computing length-of-stay distribution...")
-    def los_dist(_ds):
+    def los_dist(ds):
         conn = get_connection()
         return conn.execute(f"""
             SELECT

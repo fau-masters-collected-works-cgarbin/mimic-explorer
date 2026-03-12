@@ -35,11 +35,13 @@ if not patients_path or not admissions_path:
 
 
 @st.cache_data(show_spinner="Computing dataset overview...")
-def compute_overview(_dataset_name: str, _patients: str, _admissions: str, _icustays: str | None):
+def compute_overview(
+    dataset_name: str, patients_path: str, admissions_path: str, icustays_path: str | None,
+):
     """Compute all overview metrics in one pass per table."""
     conn = get_connection()
-    p = table_ref(_patients)
-    a = table_ref(_admissions)
+    p = table_ref(patients_path)
+    a = table_ref(admissions_path)
 
     total_patients = scalar_query(conn, f"SELECT count(*) FROM {p}")
     total_admissions = scalar_query(conn, f"SELECT count(*) FROM {a}")
@@ -76,8 +78,8 @@ def compute_overview(_dataset_name: str, _patients: str, _admissions: str, _icus
     # ICU stats (if table exists)
     total_icu_stays = None
     median_icu_los = None
-    if _icustays:
-        i = table_ref(_icustays)
+    if icustays_path:
+        i = table_ref(icustays_path)
         total_icu_stays = scalar_query(conn, f"SELECT count(*) FROM {i}")
         los_col = "LOS" if is_mimic3 else "los"
         median_icu_los = scalar_query(conn, f'SELECT round(median("{los_col}"), 1) FROM {i}')

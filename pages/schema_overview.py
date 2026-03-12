@@ -26,7 +26,7 @@ include_large = st.checkbox(
 
 
 @st.cache_data(show_spinner="Counting rows...")
-def get_row_count(_dataset_name: str, table_name: str, file_path_str: str) -> int | None:
+def get_row_count(dataset_name: str, table_name: str, file_path_str: str) -> int | None:
     """Cached row count. Returns None if skipped."""
     if table_name in LARGE_TABLES:
         return None
@@ -35,7 +35,7 @@ def get_row_count(_dataset_name: str, table_name: str, file_path_str: str) -> in
 
 
 @st.cache_data(show_spinner="Reading columns...")
-def get_column_info(_dataset_name: str, file_path_str: str) -> list[dict[str, str]]:
+def get_column_info(dataset_name: str, file_path_str: str) -> list[dict[str, str]]:
     """Cached column info."""
     c = get_connection()
     return column_info(c, Path(file_path_str))

@@ -46,9 +46,9 @@ ignore = [
 ]
 "pages/**/*.py" = [
     "ANN",     # annotations optional in Streamlit pages
+    "ARG001",  # cache-key-only args in st.cache_data functions (intentional)
     "T201",    # print allowed in pages (streamlit uses it)
     "S608",    # SQL injection false positives (DuckDB read_csv_auto on local files)
-
 ]
 "app.py" = [
     "ANN",     # annotations optional in app entry point
