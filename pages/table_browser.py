@@ -5,7 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from mimic_explorer.config import DATASETS, LARGE_TABLES
-from mimic_explorer.db import get_connection, table_ref
+from mimic_explorer.db import column_info, get_connection, table_ref
 
 st.title("Table Browser")
 
@@ -31,24 +31,31 @@ if selected_table in LARGE_TABLES:
 @st.cache_data(show_spinner="Reading schema...")
 def get_columns(dataset_name: str, table_name: str, file_path_str: str):
     c = get_connection()
-    cursor = c.execute(f"SELECT * FROM read_csv_auto('{file_path_str}') LIMIT 0")
-    return [{"name": col[0], "type": str(col[1])} for col in cursor.description]
+    return column_info(c, Path(file_path_str))
 
 
 columns = get_columns(dataset.name, selected_table, str(file_path))
 col_names = [c["name"] for c in columns]
 
 # Filters
+NUMERIC_TYPES = {"BIGINT", "INTEGER", "DOUBLE", "FLOAT", "DECIMAL"}
+
 st.sidebar.subheader("Filters")
 where_clauses = []
 for col in columns[:10]:  # Show filter inputs for the first 10 columns only
     val = st.sidebar.text_input(f"{col['name']} =", key=f"filter_{col['name']}")
     if val:
-        # Simple equality filter -- quote strings
-        if col["type"] in ("BIGINT", "INTEGER", "DOUBLE", "FLOAT", "DECIMAL"):
-            where_clauses.append(f'"{col["name"]}" = {val}')
+        if col["type"] in NUMERIC_TYPES:
+            try:
+                numeric_val = float(val)
+            except ValueError:
+                st.sidebar.error(f"'{val}' is not a valid number for {col['name']}")
+                continue
+            where_clauses.append(f'"{col["name"]}" = {numeric_val}')
         else:
-            where_clauses.append(f"\"{col['name']}\" = '{val}'")
+            # Escape single quotes to prevent SQL injection
+            escaped = val.replace("'", "''")
+            where_clauses.append(f"\"{col['name']}\" = '{escaped}'")
 
 # Sort
 sort_col = st.sidebar.selectbox("Sort by", options=["(none)", *col_names])
