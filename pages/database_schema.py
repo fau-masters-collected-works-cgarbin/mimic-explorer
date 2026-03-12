@@ -1,0 +1,206 @@
+"""Database Schema -- how MIMIC tables connect and what they contain."""
+
+from pathlib import Path
+
+import streamlit as st
+
+from mimic_explorer.config import DATASETS, LARGE_TABLES
+from mimic_explorer.db import column_info, get_connection, row_count
+
+st.title("Database Schema")
+
+dataset = DATASETS[st.session_state["dataset_key"]]
+st.caption(f"Showing: {dataset.name}")
+tables = dataset.find_tables()
+is_mimic3 = dataset.uppercase_filenames
+
+JOIN_KEYS = {"subject_id", "hadm_id", "icustay_id" if is_mimic3 else "stay_id"}
+ICU_KEY = "icustay_id" if is_mimic3 else "stay_id"
+
+
+# -- How tables connect --
+
+st.subheader("How tables connect")
+
+st.markdown(f"""
+{dataset.name} is organized around a three-level hierarchy. Every table connects to at least one of
+these identifiers, and understanding this hierarchy is the key to joining tables correctly.
+
+- **`subject_id`** identifies a unique patient. Every clinical table has this.
+- **`hadm_id`** identifies a single hospital admission. One patient can have multiple admissions.
+- **`{ICU_KEY}`** identifies a single ICU stay. One admission can involve multiple ICU stays
+  (e.g., a patient transferred out of the ICU and later readmitted).
+""")
+
+dot = f"""
+digraph MIMIC {{
+    rankdir=LR;
+    node [shape=box, style=filled, fillcolor="#f0f2f6", fontname="Helvetica"];
+    edge [fontname="Helvetica", fontsize=10];
+
+    patients [label="patients\\n(one row per patient)", fillcolor="#d4e6f1"];
+    admissions [label="admissions\\n(one row per admission)", fillcolor="#d5f5e3"];
+    icustays [label="icustays\\n(one row per ICU stay)", fillcolor="#fdebd0"];
+
+    patients -> admissions [label="subject_id\\n(1 to many)"];
+    admissions -> icustays [label="hadm_id\\n(1 to many)"];
+
+    // Clinical tables that hang off each level
+    node [shape=note, fillcolor="#fafafa", fontsize=10];
+
+    patient_tables [label="diagnoses_icd\\nprocedures_icd\\nprescriptions\\n..."];
+    icu_tables [label="chartevents\\ninputevents\\noutputevents\\n..."];
+
+    admissions -> patient_tables [style=dashed, label="hadm_id"];
+    icustays -> icu_tables [style=dashed, label="{ICU_KEY}"];
+}}
+"""
+st.graphviz_chart(dot)
+
+
+# -- Scan schema --
+
+
+@st.cache_data(show_spinner="Scanning schema...")
+def scan_schema(dataset_name: str, tables_map: dict[str, str]):
+    """For each table, detect join keys and read column details."""
+    conn = get_connection()
+    result = {}
+    for table_name, file_path in sorted(tables_map.items()):
+        cols = column_info(conn, Path(file_path))
+        col_names_lower = {c["name"].lower() for c in cols}
+        result[table_name] = {
+            "subject_id": "subject_id" in col_names_lower,
+            "hadm_id": "hadm_id" in col_names_lower,
+            "icu_key": ICU_KEY.lower() in col_names_lower,
+            "columns": cols,
+        }
+    return result
+
+
+schema = scan_schema(dataset.name, {k: str(v) for k, v in tables.items()})
+
+
+@st.cache_data(show_spinner="Counting rows...")
+def get_row_count(dataset_name: str, table_name: str, file_path_str: str) -> int | None:
+    """Cached row count. Returns None if skipped."""
+    if table_name in LARGE_TABLES:
+        return None
+    conn = get_connection()
+    return row_count(conn, Path(file_path_str))
+
+
+# -- Group tables by connectivity level --
+
+icu_level = []
+admission_level = []
+patient_only = []
+no_keys = []
+
+for table_name, keys in sorted(schema.items()):
+    if keys["icu_key"]:
+        icu_level.append(table_name)
+    elif keys["hadm_id"]:
+        admission_level.append(table_name)
+    elif keys["subject_id"]:
+        patient_only.append(table_name)
+    else:
+        no_keys.append(table_name)
+
+
+# -- Tables by connectivity level --
+
+st.subheader("Tables by connectivity level")
+
+include_large = st.checkbox(
+    "Include row counts for large tables (CHARTEVENTS, LABEVENTS, etc.) -- slow first time",
+    value=False,
+)
+
+
+def render_table_group(title, description, table_names):
+    """Render a connectivity group with expanders for each table."""
+    if not table_names:
+        return
+    st.markdown(f"**{title}** -- {description}")
+    for name in table_names:
+        info = schema[name]
+        cols = info["columns"]
+        with st.expander(f"{name} ({len(cols)} columns)"):
+            # Join keys
+            present_keys = []
+            if info["subject_id"]:
+                present_keys.append("subject_id")
+            if info["hadm_id"]:
+                present_keys.append("hadm_id")
+            if info["icu_key"]:
+                present_keys.append(ICU_KEY)
+            if present_keys:
+                st.markdown("Join keys: " + ", ".join(f"`{k}`" for k in present_keys))
+
+            # Row count
+            if name in LARGE_TABLES and not include_large:
+                st.caption("Large table -- row count skipped")
+            else:
+                count = get_row_count(dataset.name, name, str(tables[name]))
+                if count is not None:
+                    st.metric("Rows", f"{count:,}")
+                else:
+                    st.caption("Large table -- row count skipped")
+
+            # Column details
+            st.dataframe(cols, hide_index=True)
+
+
+render_table_group(
+    f"ICU-level tables (have `{ICU_KEY}`)",
+    "one row per ICU event or measurement",
+    icu_level,
+)
+render_table_group(
+    "Admission-level tables (have `hadm_id`)",
+    "one row per event within an admission",
+    admission_level,
+)
+render_table_group(
+    "Patient-level tables (have `subject_id` only)",
+    "one row per patient or per patient event",
+    patient_only,
+)
+render_table_group(
+    "Lookup/dictionary tables (no join keys)",
+    "reference data like ICD code descriptions",
+    no_keys,
+)
+
+
+# -- Common join patterns --
+
+st.divider()
+st.subheader("Common join patterns")
+
+st.markdown(f"""
+**Get patient demographics for an ICU stay:**
+```sql
+SELECT p.*, i.*
+FROM icustays i
+JOIN patients p ON i.subject_id = p.subject_id
+```
+
+**Get diagnoses for an admission:**
+```sql
+SELECT a.*, d.*
+FROM admissions a
+JOIN diagnoses_icd d ON a.hadm_id = d.hadm_id
+```
+
+**Get chart events for a specific ICU stay:**
+```sql
+SELECT c.*
+FROM chartevents c
+WHERE c.{ICU_KEY} = <some_stay_id>
+```
+
+These patterns compose: you can chain joins across all three levels to connect any tables that
+share a key. The grouping above tells you which key to use.
+""")

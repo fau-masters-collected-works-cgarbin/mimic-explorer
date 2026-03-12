@@ -10,9 +10,8 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 - `src/mimic_explorer/config.py` -- Dataset path configuration, table discovery. No UI imports.
 - `src/mimic_explorer/db.py` -- DuckDB connection, `table_ref()` resolver, query helpers. No UI imports.
 - `pages/dataset_at_a_glance.py` -- Key dataset metrics and contextual explanations for newcomers. UI only, uses db and config.
-- `pages/table_relationships.py` -- Join key hierarchy, key matrix, table groupings, join patterns. UI only, uses db and config.
+- `pages/database_schema.py` -- Join key hierarchy, tables grouped by connectivity with column details in expanders, join patterns. UI only, uses db and config.
 - `pages/clinical_insights.py` -- Distributions: top diagnoses/procedures/labs, demographics, LOS. UI only, uses db.
-- `pages/schema_overview.py` -- Table list with row counts and column info. UI only, uses db and config.
 - `pages/table_browser.py` -- Sample rows, column stats, filter/sort. UI only, uses db and config.
 - `pages/community_references.py` -- Links to external MIMIC resources. Static content, no data queries.
 
