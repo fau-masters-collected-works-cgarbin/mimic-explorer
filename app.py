@@ -24,5 +24,6 @@ st.sidebar.selectbox(
     format_func=lambda k: DATASETS[k].name,
     key="dataset_key",
 )
+st.sidebar.caption(f"Path: `{DATASETS[st.session_state['dataset_key']].base_path}`")
 
 pages.run()
