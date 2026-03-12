@@ -39,16 +39,14 @@ def test_column_info(sample_csv_gz):
 
 def test_sample_rows(sample_csv_gz):
     conn = get_connection()
-    result = sample_rows(conn, sample_csv_gz, limit=2)
-    df = result.fetchdf()
+    df = sample_rows(conn, sample_csv_gz, limit=2)
     assert len(df) == 2
     assert "subject_id" in df.columns
 
 
 def test_sample_rows_respects_limit(sample_csv_gz):
     conn = get_connection()
-    result = sample_rows(conn, sample_csv_gz, limit=1)
-    df = result.fetchdf()
+    df = sample_rows(conn, sample_csv_gz, limit=1)
     assert len(df) == 1
 
 
