@@ -18,46 +18,6 @@ JOIN_KEYS = {"subject_id", "hadm_id", "icustay_id" if is_mimic3 else "stay_id"}
 ICU_KEY = "icustay_id" if is_mimic3 else "stay_id"
 
 
-# -- How tables connect --
-
-st.subheader("How tables connect")
-
-st.markdown(f"""
-{dataset.name} is organized around a three-level hierarchy. Every table connects to at least one of
-these identifiers, and understanding this hierarchy is the key to joining tables correctly.
-
-- **`subject_id`** identifies a unique patient. Every clinical table has this.
-- **`hadm_id`** identifies a single hospital admission. One patient can have multiple admissions.
-- **`{ICU_KEY}`** identifies a single ICU stay. One admission can involve multiple ICU stays
-  (e.g., a patient transferred out of the ICU and later readmitted).
-""")
-
-dot = f"""
-digraph MIMIC {{
-    rankdir=LR;
-    node [shape=box, style=filled, fillcolor="#f0f2f6", fontname="Helvetica"];
-    edge [fontname="Helvetica", fontsize=10];
-
-    patients [label="patients\\n(one row per patient)", fillcolor="#d4e6f1"];
-    admissions [label="admissions\\n(one row per admission)", fillcolor="#d5f5e3"];
-    icustays [label="icustays\\n(one row per ICU stay)", fillcolor="#fdebd0"];
-
-    patients -> admissions [label="subject_id\\n(1 to many)"];
-    admissions -> icustays [label="hadm_id\\n(1 to many)"];
-
-    // Clinical tables that hang off each level
-    node [shape=note, fillcolor="#fafafa", fontsize=10];
-
-    patient_tables [label="diagnoses_icd\\nprocedures_icd\\nprescriptions\\n..."];
-    icu_tables [label="chartevents\\ninputevents\\noutputevents\\n..."];
-
-    admissions -> patient_tables [style=dashed, label="hadm_id"];
-    icustays -> icu_tables [style=dashed, label="{ICU_KEY}"];
-}}
-"""
-st.graphviz_chart(dot)
-
-
 # -- Scan schema --
 
 
@@ -92,12 +52,16 @@ def get_row_count(dataset_name: str, table_name: str, file_path_str: str) -> int
 
 # -- Group tables by connectivity level --
 
+CORE_TABLES = {"patients", "admissions", "icustays"}
+
 icu_level = []
 admission_level = []
 patient_only = []
 no_keys = []
 
 for table_name, keys in sorted(schema.items()):
+    if table_name in CORE_TABLES:
+        continue
     if keys["icu_key"]:
         icu_level.append(table_name)
     elif keys["hadm_id"]:
@@ -106,6 +70,63 @@ for table_name, keys in sorted(schema.items()):
         patient_only.append(table_name)
     else:
         no_keys.append(table_name)
+
+
+# -- How tables connect --
+
+st.subheader("How tables connect")
+
+st.markdown(f"""
+{dataset.name} is organized around a three-level hierarchy. Every table connects to at least one of
+these identifiers, and understanding this hierarchy is the key to joining tables correctly.
+
+- **`subject_id`** identifies a unique patient. Every clinical table has this.
+- **`hadm_id`** identifies a single hospital admission. One patient can have multiple admissions.
+- **`{ICU_KEY}`** identifies a single ICU stay. One admission can involve multiple ICU stays
+  (e.g., a patient transferred out of the ICU and later readmitted).
+""")
+
+admission_label = "\\n".join(admission_level)
+icu_label = "\\n".join(icu_level)
+patient_label = "\\n".join(patient_only)
+dict_label = "\\n".join(no_keys)
+
+dot = f"""
+digraph MIMIC {{
+    rankdir=LR;
+    node [shape=box, style=filled, fillcolor="#f0f2f6", fontname="Helvetica"];
+    edge [fontname="Helvetica", fontsize=10];
+
+    patients [label="patients\\n(one row per patient)", fillcolor="#d4e6f1"];
+    admissions [label="admissions\\n(one row per admission)", fillcolor="#d5f5e3"];
+    icustays [label="icustays\\n(one row per ICU stay)", fillcolor="#fdebd0"];
+
+    patients -> admissions [label="subject_id\\n(1 to many)"];
+    admissions -> icustays [label="hadm_id\\n(1 to many)"];
+
+    // Clinical tables that hang off each level
+    node [shape=note, fillcolor="#fafafa", fontsize=10];
+
+    admission_tables [label="{admission_label}"];
+    icu_tables [label="{icu_label}"];
+
+    admissions -> admission_tables [style=dashed, label="hadm_id"];
+    icustays -> icu_tables [style=dashed, label="{ICU_KEY}"];
+"""
+
+if patient_only:
+    dot += f"""
+    patient_tables [label="{patient_label}"];
+    patients -> patient_tables [style=dashed, label="subject_id"];
+"""
+
+if no_keys:
+    dot += f"""
+    dict_tables [label="{dict_label}"];
+"""
+
+dot += "}"
+st.graphviz_chart(dot)
 
 
 # -- Tables by connectivity level --
@@ -152,6 +173,12 @@ def render_table_group(title, description, table_names):
             st.dataframe(cols, hide_index=True)
 
 
+core_tables = [t for t in sorted(CORE_TABLES) if t in schema]
+render_table_group(
+    "Core tables",
+    "the three tables that define the join hierarchy",
+    core_tables,
+)
 render_table_group(
     f"ICU-level tables (have `{ICU_KEY}`)",
     "one row per ICU event or measurement",
