@@ -1,5 +1,6 @@
 """Dataset path configuration for MIMIC-III and MIMIC-IV."""
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,20 +37,22 @@ class DatasetConfig:
         return tables
 
 
-# Default dataset configurations -- adjust paths to match your local setup
+# Default paths; override with MIMIC_III_PATH / MIMIC_IV_PATH environment variables
+_MIMIC3_DEFAULT = Path.home() / "projects/mimic-iii/physionet.org/files/mimiciii/1.4"
+_MIMIC4_DEFAULT = Path.home() / "projects/mimic-iv/physionet.org/files/mimiciv/3.1"
+
 DATASETS: dict[str, DatasetConfig] = {
     "mimic-iii": DatasetConfig(
         name="MIMIC-III v1.4",
-        base_path=Path.home() / "projects/mimic-iii/physionet.org/files/mimiciii/1.4",
+        base_path=Path(os.environ.get("MIMIC_III_PATH", str(_MIMIC3_DEFAULT))),
         uppercase_filenames=True,
     ),
     "mimic-iv": DatasetConfig(
         name="MIMIC-IV v3.1",
-        base_path=Path.home() / "projects/mimic-iv/physionet.org/files/mimiciv/3.1",
+        base_path=Path(os.environ.get("MIMIC_IV_PATH", str(_MIMIC4_DEFAULT))),
         subdirs=("hosp", "icu"),
     ),
 }
 
 # Tables that are very large and slow to count -- skip by default in row count operations
 LARGE_TABLES = frozenset({"chartevents", "labevents", "inputevents_cv", "inputevents_mv"})
-
