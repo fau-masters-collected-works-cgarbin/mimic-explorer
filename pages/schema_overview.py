@@ -4,16 +4,12 @@ from pathlib import Path
 
 import streamlit as st
 
-from mimic_explorer.config import LARGE_TABLES, DatasetConfig
+from mimic_explorer.config import DATASETS, LARGE_TABLES
 from mimic_explorer.db import column_info, get_connection, row_count
 
 st.title("Schema Overview")
 
-if "dataset" not in st.session_state:
-    st.warning("Select a dataset from the main page first.")
-    st.stop()
-
-dataset: DatasetConfig = st.session_state["dataset"]
+dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 

@@ -6,26 +6,7 @@ from mimic_explorer.config import DATASETS
 
 st.set_page_config(page_title="MIMIC Explorer", page_icon="🏥", layout="wide")
 
-# Dataset selector in sidebar
-dataset_key = st.sidebar.selectbox(
-    "Dataset",
-    options=list(DATASETS.keys()),
-    format_func=lambda k: DATASETS[k].name,
-)
-
-dataset = DATASETS[dataset_key]
-
-# Validate that the data path exists
-if not dataset.base_path.exists():
-    st.error(f"Data path not found: `{dataset.base_path}`")
-    st.info("Update the paths in `src/mimic_explorer/config.py` to match your local setup.")
-    st.stop()
-
-# Store in session state for pages to access
-st.session_state["dataset_key"] = dataset_key
-st.session_state["dataset"] = dataset
-
-# Define page order explicitly -- no numeric prefixes needed
+# Navigation defined first, per Streamlit docs pattern
 pages = st.navigation(
     [
         st.Page("pages/dataset_at_a_glance.py", title="Dataset at a Glance", icon="📊"),
@@ -35,6 +16,14 @@ pages = st.navigation(
         st.Page("pages/table_browser.py", title="Table Browser", icon="🔍"),
         st.Page("pages/community_references.py", title="Community References", icon="📚"),
     ]
+)
+
+# Sidebar widgets after navigation -- pages read st.session_state["dataset_key"]
+st.sidebar.selectbox(
+    "Dataset",
+    options=list(DATASETS.keys()),
+    format_func=lambda k: DATASETS[k].name,
+    key="dataset_key",
 )
 
 pages.run()

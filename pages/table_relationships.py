@@ -2,16 +2,12 @@
 
 import streamlit as st
 
-from mimic_explorer.config import DatasetConfig
+from mimic_explorer.config import DATASETS
 from mimic_explorer.db import column_info, get_connection
 
 st.title("Table Relationships")
 
-if "dataset" not in st.session_state:
-    st.warning("Select a dataset from the main page first.")
-    st.stop()
-
-dataset: DatasetConfig = st.session_state["dataset"]
+dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
