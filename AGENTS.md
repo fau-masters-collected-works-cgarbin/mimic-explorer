@@ -16,6 +16,12 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 - `pages/table_browser.py` -- Sample rows, column stats, filter/sort. UI only, uses db and config.
 - `pages/community_references.py` -- Links to external MIMIC resources. Static content, no data queries.
 
+## Git workflow
+
+- Work in worktrees (`isolation: "worktree"`), not the main working directory.
+- Always rebase, never merge. Keep history linear.
+- Push directly to `main` when done — no PRs for single-author work.
+
 ## Setup
 
 ```bash
