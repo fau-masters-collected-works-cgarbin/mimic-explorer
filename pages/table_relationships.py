@@ -24,11 +24,11 @@ ICU_KEY = "icustay_id" if is_mimic3 else "stay_id"
 
 
 @st.cache_data(show_spinner="Scanning table columns...")
-def scan_join_keys(_dataset_name: str, _tables: dict[str, str]):
+def scan_join_keys(dataset_name: str, tables_map: dict[str, str]):
     """For each table, detect which join keys are present."""
     conn = get_connection()
     result = {}
-    for table_name, file_path in sorted(_tables.items()):
+    for table_name, file_path in sorted(tables_map.items()):
         cols = column_info(conn, file_path)
         col_names_lower = {c["name"].lower() for c in cols}
         result[table_name] = {

@@ -32,7 +32,7 @@ if selected_table in LARGE_TABLES:
 
 # Column info (cached)
 @st.cache_data(show_spinner="Reading schema...")
-def get_columns(_dataset_name: str, _table: str, file_path_str: str):
+def get_columns(dataset_name: str, table_name: str, file_path_str: str):
     c = get_connection()
     cursor = c.execute(f"SELECT * FROM read_csv_auto('{file_path_str}') LIMIT 0")
     return [{"name": col[0], "type": str(col[1])} for col in cursor.description]
@@ -85,15 +85,15 @@ stats_col = st.selectbox("Column for stats", options=col_names)
 if stats_col:
 
     @st.cache_data(show_spinner="Computing stats...")
-    def compute_stats(_dataset_name: str, _table: str, _col: str, file_path_str: str):
+    def compute_stats(dataset_name: str, table_name: str, col_name: str, file_path_str: str):
         c = get_connection()
         r = table_ref(Path(file_path_str))
         return c.execute(f"""
             SELECT
                 count(*) as total_rows,
-                count("{_col}") as non_null,
-                count(*) - count("{_col}") as null_count,
-                count(DISTINCT "{_col}") as distinct_values
+                count("{col_name}") as non_null,
+                count(*) - count("{col_name}") as null_count,
+                count(DISTINCT "{col_name}") as distinct_values
             FROM {r}
         """).fetchdf()
 
