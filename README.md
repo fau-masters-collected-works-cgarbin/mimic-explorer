@@ -2,14 +2,43 @@
 
 Interactive Streamlit app for exploring MIMIC-III and MIMIC-IV clinical datasets. Reads CSV.gz files directly with DuckDB -- no ETL, no database setup.
 
-Built as Phase 0a of a dissertation project: understand the data before building experiments.
+## Getting started
 
-## What it does
+You need local copies of the MIMIC CSV.gz files (downloaded from PhysioNet after credentialing).
 
-- **Dataset at a Glance**: Key numbers (patient count, admissions, ICU stays, mortality rate, median length of stay) with plain-language explanations of what they mean clinically.
-- **Table Relationships**: Visual diagram of the `subject_id` / `hadm_id` / `icustay_id` join key hierarchy, a matrix showing which keys each table contains, and ready-to-use join patterns.
-- **Schema Overview**: Every table with row counts, column counts, and column types.
-- **Table Browser**: Browse rows with filtering, sorting, and column-level statistics.
+Install dependencies and run:
+
+```bash
+uv sync --all-groups
+uv run streamlit run app.py
+```
+
+By default the app looks for datasets at:
+
+- MIMIC-III: `~/projects/mimic-iii/physionet.org/files/mimiciii/1.4`
+- MIMIC-IV: `~/projects/mimic-iv/physionet.org/files/mimiciv/3.1`
+
+To use different paths, set environment variables before launching:
+
+```bash
+export MIMIC_III_PATH=/your/path/to/mimiciii/1.4
+export MIMIC_IV_PATH=/your/path/to/mimiciv/3.1
+uv run streamlit run app.py
+```
+
+Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in the sidebar.
+
+## What each page does
+
+**Dataset at a Glance** gives you the key numbers: patient count, admissions, ICU stays, mortality rate, and median length of stay. Each metric includes a plain-language explanation of what it means clinically. Start here to get oriented.
+
+**Database Schema** shows how tables relate to each other through the `subject_id` / `hadm_id` / `icustay_id` join key hierarchy. Tables are grouped by connectivity, each expandable to show column details. Ready-to-use join patterns are included so you can start writing queries against the tables you care about.
+
+**Clinical Insights** shows distributions across the dataset: top diagnoses, procedures, and lab tests; patient demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding the patient population before designing cohort filters.
+
+**Temporal Note Timeline** (MIMIC-III only) explores clinical notes across hospital stays. It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
+
+**Community References** collects links to official documentation, tutorial notebooks, the mimic-code repository, and other community resources.
 
 ## How this relates to existing MIMIC resources
 
@@ -26,18 +55,3 @@ The MIMIC ecosystem already has good resources, but they serve different purpose
 **SchemaSpy** ([lcp.mit.edu/mimic-schema-spy](https://lcp.mit.edu/mimic-schema-spy/)) is the closest thing to an interactive schema explorer. Generated from a PostgreSQL load of MIMIC-III, it provides clickable table views, foreign key diagrams, column-level metadata, and relationship navigation. It's thorough for schema structure, but covers MIMIC-III only (generated in 2017), requires a Postgres load to regenerate, shows metadata without actual data browsing, and doesn't provide dataset-level clinical context. A [GitHub issue](https://github.com/MIT-LCP/mimic-code/issues/183) also collected community-contributed ER diagrams, and the MIMIC-IV [Scientific Data paper](https://www.nature.com/articles/s41597-022-01899-x) includes schema figures.
 
 **What this tool adds**: dataset-level orientation (key statistics with clinical context), live data browsing against CSV.gz files with no database setup, and support for both MIMIC-III and MIMIC-IV. It's the "guided tour" layer that sits between the official docs (reference) and mimic-code (analysis). For schema relationships specifically, SchemaSpy's FK diagrams are more detailed than what we show -- our join key matrix is a simpler view focused on the three core identifiers that matter most for getting started.
-
-## Setup
-
-```bash
-uv sync --all-groups
-pre-commit install
-```
-
-## Running
-
-```bash
-uv run streamlit run app.py
-```
-
-Update dataset paths in `src/mimic_explorer/config.py` to point to your local MIMIC CSV.gz files.
