@@ -67,18 +67,18 @@ if diagnoses_ref and d_diag_ref:
     st.caption("Most frequently assigned diagnosis codes across all admissions.")
 
     @st.cache_data(show_spinner="Querying diagnoses...")
-    def top_diagnoses(ds):
+    def top_diagnoses(ds, diag_ref, d_ref, join_clause, col):
         conn = get_connection()
         return conn.execute(f"""
-            SELECT d."{title_col}" AS diagnosis, count(*) AS count
-            FROM {diagnoses_ref} t
-            JOIN {d_diag_ref} d ON {icd_join}
-            GROUP BY d."{title_col}"
+            SELECT d."{col}" AS diagnosis, count(*) AS count
+            FROM {diag_ref} t
+            JOIN {d_ref} d ON {join_clause}
+            GROUP BY d."{col}"
             ORDER BY count DESC
             LIMIT 20
         """).fetchdf()
 
-    df_diag = top_diagnoses(dataset.name)
+    df_diag = top_diagnoses(dataset.name, diagnoses_ref, d_diag_ref, icd_join, title_col)
     fig = px.bar(
         df_diag, x="count", y="diagnosis", orientation="h",
         labels={"count": "Admissions", "diagnosis": ""},
@@ -93,18 +93,18 @@ if procedures_ref and d_proc_ref:
     st.caption("Most frequently recorded procedure codes across all admissions.")
 
     @st.cache_data(show_spinner="Querying procedures...")
-    def top_procedures(ds):
+    def top_procedures(ds, proc_ref, d_ref, join_clause, col):
         conn = get_connection()
         return conn.execute(f"""
-            SELECT d."{title_col}" AS procedure, count(*) AS count
-            FROM {procedures_ref} t
-            JOIN {d_proc_ref} d ON {icd_join}
-            GROUP BY d."{title_col}"
+            SELECT d."{col}" AS procedure, count(*) AS count
+            FROM {proc_ref} t
+            JOIN {d_ref} d ON {join_clause}
+            GROUP BY d."{col}"
             ORDER BY count DESC
             LIMIT 20
         """).fetchdf()
 
-    df_proc = top_procedures(dataset.name)
+    df_proc = top_procedures(dataset.name, procedures_ref, d_proc_ref, icd_join, title_col)
     fig = px.bar(
         df_proc, x="count", y="procedure", orientation="h",
         labels={"count": "Admissions", "procedure": ""},
@@ -122,18 +122,18 @@ if labevents_ref and d_lab_ref:
     )
 
     @st.cache_data(show_spinner="Sampling lab events (this may take a moment)...")
-    def top_labs(ds):
+    def top_labs(ds, lab_ref, dlab_ref, item_col, lbl_col):
         conn = get_connection()
         return conn.execute(f"""
-            SELECT d."{label_col}" AS lab_test, count(*) AS count
-            FROM (SELECT "{itemid_col}" FROM {labevents_ref} LIMIT 1000000) t
-            JOIN {d_lab_ref} d ON d."{itemid_col}" = t."{itemid_col}"
-            GROUP BY d."{label_col}"
+            SELECT d."{lbl_col}" AS lab_test, count(*) AS count
+            FROM (SELECT "{item_col}" FROM {lab_ref} LIMIT 1000000) t
+            JOIN {dlab_ref} d ON d."{item_col}" = t."{item_col}"
+            GROUP BY d."{lbl_col}"
             ORDER BY count DESC
             LIMIT 20
         """).fetchdf()
 
-    df_labs = top_labs(dataset.name)
+    df_labs = top_labs(dataset.name, labevents_ref, d_lab_ref, itemid_col, label_col)
     fig = px.bar(
         df_labs, x="count", y="lab_test", orientation="h",
         labels={"count": "Measurements (sampled)", "lab_test": ""},
@@ -150,37 +150,37 @@ if patients_ref and admissions_ref:
 
     # Gender distribution
     @st.cache_data(show_spinner="Computing gender distribution...")
-    def gender_dist(ds):
+    def gender_dist(ds, pat_ref, g_col):
         conn = get_connection()
         return conn.execute(f"""
-            SELECT "{gender_col}" AS gender, count(*) AS count
-            FROM {patients_ref}
-            GROUP BY "{gender_col}"
+            SELECT "{g_col}" AS gender, count(*) AS count
+            FROM {pat_ref}
+            GROUP BY "{g_col}"
             ORDER BY count DESC
         """).fetchdf()
 
     with col1:
         st.markdown("**Gender distribution** (patient level)")
-        df_gender = gender_dist(dataset.name)
+        df_gender = gender_dist(dataset.name, patients_ref, gender_col)
         fig = px.pie(df_gender, values="count", names="gender")
         fig.update_layout(height=300)
         st.plotly_chart(fig, width="stretch")
 
     # Race/ethnicity distribution
     @st.cache_data(show_spinner="Computing race/ethnicity distribution...")
-    def race_dist(ds):
+    def race_dist(ds, adm_ref, r_col):
         conn = get_connection()
         return conn.execute(f"""
-            SELECT "{race_col}" AS race, count(*) AS count
-            FROM {admissions_ref}
-            GROUP BY "{race_col}"
+            SELECT "{r_col}" AS race, count(*) AS count
+            FROM {adm_ref}
+            GROUP BY "{r_col}"
             ORDER BY count DESC
             LIMIT 15
         """).fetchdf()
 
     with col2:
         st.markdown("**Race/ethnicity distribution** (admission level, top 15)")
-        df_race = race_dist(dataset.name)
+        df_race = race_dist(dataset.name, admissions_ref, race_col)
         fig = px.pie(df_race, values="count", names="race")
         fig.update_layout(height=300)
         st.plotly_chart(fig, width="stretch")
@@ -189,9 +189,9 @@ if patients_ref and admissions_ref:
     st.markdown("**Age distribution at admission**")
 
     @st.cache_data(show_spinner="Computing age distribution...")
-    def age_dist(ds):
+    def age_dist(ds, pat_ref, adm_ref, uppercase):
         conn = get_connection()
-        if is_mimic3:
+        if uppercase:
             # MIMIC-III: compute age from DOB and first admission time.
             # Patients >89 have DOB shifted to ~300 years before admission;
             # cap at 90 to represent the ">89" group.
@@ -201,16 +201,16 @@ if patients_ref and admissions_ref:
                         date_diff('year', "DOB"::TIMESTAMP, "ADMITTIME"::TIMESTAMP),
                         90
                     ) AS age
-                FROM {patients_ref} p
-                JOIN {admissions_ref} a ON p."SUBJECT_ID" = a."SUBJECT_ID"
+                FROM {pat_ref} p
+                JOIN {adm_ref} a ON p."SUBJECT_ID" = a."SUBJECT_ID"
             """).fetchdf()
         # MIMIC-IV: anchor_age is directly available (one per patient)
         return conn.execute(f"""
                 SELECT "anchor_age" AS age
-                FROM {patients_ref}
+                FROM {pat_ref}
             """).fetchdf()
 
-    df_age = age_dist(dataset.name)
+    df_age = age_dist(dataset.name, patients_ref, admissions_ref, is_mimic3)
     fig = px.histogram(
         df_age, x="age", nbins=40,
         labels={"age": "Age (years)", "count": "Count"},
@@ -236,19 +236,19 @@ if admissions_ref:
     st.subheader("Hospital Length of Stay")
 
     @st.cache_data(show_spinner="Computing length-of-stay distribution...")
-    def los_dist(ds):
+    def los_dist(ds, adm_ref, adm_col, dis_col):
         conn = get_connection()
         return conn.execute(f"""
             SELECT
                 date_diff('hour',
-                    "{admit_col}"::TIMESTAMP,
-                    "{disch_col}"::TIMESTAMP
+                    "{adm_col}"::TIMESTAMP,
+                    "{dis_col}"::TIMESTAMP
                 ) / 24.0 AS los_days
-            FROM {admissions_ref}
-            WHERE "{disch_col}" IS NOT NULL
+            FROM {adm_ref}
+            WHERE "{dis_col}" IS NOT NULL
         """).fetchdf()
 
-    df_los = los_dist(dataset.name)
+    df_los = los_dist(dataset.name, admissions_ref, admit_col, disch_col)
     fig = px.histogram(
         df_los, x="los_days", nbins=100,
         labels={"los_days": "Length of Stay (days)", "count": "Admissions"},
