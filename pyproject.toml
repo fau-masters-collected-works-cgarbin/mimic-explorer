@@ -17,7 +17,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = [{ include-group = "lint" }, { include-group = "test" }]
+dev = [{ include-group = "lint" }, { include-group = "test" }, "pre-commit"]
 lint = ["ruff"]
 test = ["pytest", "pytest-cov"]
 
