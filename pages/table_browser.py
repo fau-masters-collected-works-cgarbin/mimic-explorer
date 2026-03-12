@@ -14,6 +14,7 @@ if "dataset" not in st.session_state:
     st.stop()
 
 dataset: DatasetConfig = st.session_state["dataset"]
+st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 conn = get_connection()
 
