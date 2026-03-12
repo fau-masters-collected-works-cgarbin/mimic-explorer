@@ -20,7 +20,14 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 - Work in worktrees (`isolation: "worktree"`), not the main working directory.
 - Always rebase, never merge. Keep history linear.
 - Push directly to `main` when done — no PRs for single-author work.
-- Sync with main before merging: `git fetch origin && git rebase origin/main` from the worktree. Resolve any conflicts, then run lint and tests before asking the user to merge.
+- Before pushing, sync and push in one sequence from the worktree. Resolve any conflicts, then run lint and tests before pushing:
+  ```bash
+  git fetch origin && git rebase origin/main && git push origin HEAD:main
+  ```
+- After pushing, update the local main branch from the main working directory:
+  ```bash
+  git fetch origin && git reset main origin/main
+  ```
 - Sync with main before starting significant new work in a long-running worktree, to avoid large conflict sets at merge time.
 
 ## Setup
