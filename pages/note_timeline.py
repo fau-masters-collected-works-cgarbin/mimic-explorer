@@ -66,10 +66,9 @@ else:
     disch_col = "dischtime"
 
 st.markdown(
-    "How clinical notes distribute across a hospital stay. "
-    "Relevant to temporal chunking and neighborhood expansion: "
+    "How clinical notes distribute across a hospital stay: "
     "where documentation clusters, where gaps appear, and what "
-    "'nearby' means in practice."
+    "the temporal rhythm of clinical documentation looks like."
 )
 
 # Error filter used in multiple queries
@@ -291,9 +290,13 @@ with col_intervals:
         intervals = sorted_notes["timestamp"].diff().dt.total_seconds() / 3600
         intervals = intervals.dropna()
 
+        # Position each gap at the midpoint between the two notes that define it
+        hours = sorted_notes["hours_from_admit"].to_numpy()
+        midpoints = (hours[:-1] + hours[1:]) / 2
+
         interval_df = pd.DataFrame(
             {
-                "note_pair": range(1, len(intervals) + 1),
+                "hours_from_admit": midpoints,
                 "gap_hours": intervals.to_numpy(),
             }
         )
@@ -309,23 +312,22 @@ with col_intervals:
         if long_gaps > 0:
             m3.metric("Gaps >12h", long_gaps)
 
-        fig_gap = go.Figure(go.Bar(x=interval_df["note_pair"], y=interval_df["gap_hours"]))
+        fig_gap = go.Figure(go.Bar(x=interval_df["hours_from_admit"], y=interval_df["gap_hours"]))
         fig_gap.add_hline(y=12, line_dash="dot", line_color="orange", annotation_text="12h")
         fig_gap.update_layout(
             height=200,
-            xaxis_title="Note pair",
-            yaxis_title="Hours",
+            xaxis_title="Hours from Admission",
+            yaxis_title="Gap (hours)",
             margin={"t": 10},
         )
         st.plotly_chart(fig_gap, width="stretch")
+        st.caption(
+            "Each bar is the time elapsed between two consecutive notes. "
+            "Tall bars indicate documentation gaps; short bars indicate bursts of activity. "
+            "Gaps above the 12h line often align with overnight periods or weekends."
+        )
     else:
         st.caption("Need at least 2 notes to compute intervals.")
-
-st.caption(
-    "Gaps longer than ~12 hours often correspond to overnight periods or weekends, "
-    "natural boundaries for temporal chunking. Short, dense clusters typically align "
-    "with clinical events (procedures, deterioration, rounds)."
-)
 
 # ── Section 4: Note Text Viewer ──
 
