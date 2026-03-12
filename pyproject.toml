@@ -42,6 +42,7 @@ ignore = [
     "S101",    # assert allowed in tests
     "PLR2004", # magic values allowed in tests
     "ANN",     # annotations optional in tests
+    "PD901",   # generic df name is fine in tests
     "S608",    # SQL injection false positives (DuckDB read_csv_auto on local files)
 ]
 "pages/**/*.py" = [

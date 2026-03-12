@@ -14,7 +14,6 @@ st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
-JOIN_KEYS = {"subject_id", "hadm_id", "icustay_id" if is_mimic3 else "stay_id"}
 ICU_KEY = "icustay_id" if is_mimic3 else "stay_id"
 
 
@@ -42,9 +41,11 @@ schema = scan_schema(dataset.name, {k: str(v) for k, v in tables.items()})
 
 
 @st.cache_data(show_spinner="Counting rows...")
-def get_row_count(dataset_name: str, table_name: str, file_path_str: str) -> int | None:
+def get_row_count(
+    dataset_name: str, table_name: str, file_path_str: str, *, skip_large: bool = True
+) -> int | None:
     """Cached row count. Returns None if skipped."""
-    if table_name in LARGE_TABLES:
+    if skip_large and table_name in LARGE_TABLES:
         return None
     conn = get_connection()
     return row_count(conn, Path(file_path_str))
@@ -184,7 +185,9 @@ def render_table_group(title, description, table_names):
             if name in LARGE_TABLES and not include_large:
                 st.caption("Large table -- row count skipped")
             else:
-                count = get_row_count(dataset.name, name, str(tables[name]))
+                count = get_row_count(
+                    dataset.name, name, str(tables[name]), skip_large=not include_large
+                )
                 if count is not None:
                     st.metric("Rows", f"{count:,}")
                 else:

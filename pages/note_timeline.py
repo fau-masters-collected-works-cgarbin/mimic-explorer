@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import get_connection, table_ref
+from mimic_explorer.db import get_connection, resolve_refs
 
 st.title("Temporal Note Timeline")
 
@@ -17,16 +17,9 @@ st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
-
-def get_table(name):
-    path = tables.get(name)
-    if path is None:
-        return None
-    return table_ref(path)
-
-
-noteevents_ref = get_table("noteevents")
-admissions_ref = get_table("admissions")
+refs = resolve_refs(tables, ["noteevents", "admissions"])
+noteevents_ref = refs["noteevents"]
+admissions_ref = refs["admissions"]
 
 if not noteevents_ref:
     st.info(

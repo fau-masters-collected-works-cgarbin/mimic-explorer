@@ -50,6 +50,15 @@ def sample_rows(
     return conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT {limit}").fetchdf()
 
 
+def resolve_refs(tables: dict[str, Path], names: list[str]) -> dict[str, str | None]:
+    """Resolve table names to DuckDB read_csv_auto expressions.
+
+    Returns a dict mapping each requested name to its SQL reference,
+    or None if the table is not present in the dataset.
+    """
+    return {name: table_ref(tables[name]) if name in tables else None for name in names}
+
+
 def scalar_query(conn: duckdb.DuckDBPyConnection, sql: str) -> object:
     """Run a SQL query and return the single scalar result.
 

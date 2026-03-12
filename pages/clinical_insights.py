@@ -4,7 +4,7 @@ import plotly.express as px
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import get_connection, table_ref
+from mimic_explorer.db import get_connection, resolve_refs
 
 st.title("Clinical Insights")
 
@@ -19,23 +19,28 @@ st.markdown(
     "names, not opaque IDs."
 )
 
-
-def get_table(name):
-    path = tables.get(name)
-    if path is None:
-        return None
-    return table_ref(path)
-
-
 # Resolve table references
-patients_ref = get_table("patients")
-admissions_ref = get_table("admissions")
-diagnoses_ref = get_table("diagnoses_icd")
-procedures_ref = get_table("procedures_icd")
-d_diag_ref = get_table("d_icd_diagnoses")
-d_proc_ref = get_table("d_icd_procedures")
-d_lab_ref = get_table("d_labitems")
-labevents_ref = get_table("labevents")
+refs = resolve_refs(
+    tables,
+    [
+        "patients",
+        "admissions",
+        "diagnoses_icd",
+        "procedures_icd",
+        "d_icd_diagnoses",
+        "d_icd_procedures",
+        "d_labitems",
+        "labevents",
+    ],
+)
+patients_ref = refs["patients"]
+admissions_ref = refs["admissions"]
+diagnoses_ref = refs["diagnoses_icd"]
+procedures_ref = refs["procedures_icd"]
+d_diag_ref = refs["d_icd_diagnoses"]
+d_proc_ref = refs["d_icd_procedures"]
+d_lab_ref = refs["d_labitems"]
+labevents_ref = refs["labevents"]
 
 # Column name mappings
 if is_mimic3:
