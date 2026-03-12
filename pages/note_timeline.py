@@ -214,10 +214,10 @@ if df_notes.empty:
     st.warning(f"No notes found for HADM_ID = {hadm_id}.")
     st.stop()
 
-# Compute unified timestamp for each note
+# Compute unified timestamp for each note: use CHARTTIME when available, fall back to CHARTDATE
 df_notes["timestamp"] = pd.to_datetime(
-    df_notes[charttime_col].fillna(pd.to_datetime(df_notes[chartdate_col]).dt.strftime("%Y-%m-%d"))
-)
+    df_notes[charttime_col], format="mixed", errors="coerce"
+).fillna(pd.to_datetime(df_notes[chartdate_col], format="mixed", errors="coerce"))
 df_notes["has_exact_time"] = df_notes[charttime_col].notna()
 
 # Compute hours from admission
