@@ -33,7 +33,12 @@ if not patients_path or not admissions_path:
 
 @st.cache_data(show_spinner="Computing dataset overview...")
 def compute_overview(
-    dataset_name: str, patients_path: str, admissions_path: str, icustays_path: str | None,
+    dataset_name: str,
+    patients_path: str,
+    admissions_path: str,
+    icustays_path: str | None,
+    *,
+    uppercase: bool,
 ):
     """Compute all overview metrics in one pass per table."""
     conn = get_connection()
@@ -44,7 +49,7 @@ def compute_overview(
     total_admissions = scalar_query(conn, f"SELECT count(*) FROM {a}")
 
     # Gender split
-    gender_col = "GENDER" if is_mimic3 else "gender"
+    gender_col = "GENDER" if uppercase else "gender"
     male_pct = scalar_query(
         conn,
         f"SELECT round(100.0 * count(*) FILTER "
@@ -52,19 +57,19 @@ def compute_overview(
     )
 
     # Admission date range
-    admit_col = "ADMITTIME" if is_mimic3 else "admittime"
+    admit_col = "ADMITTIME" if uppercase else "admittime"
     min_admit = scalar_query(conn, f'SELECT min("{admit_col}")::DATE FROM {a}')
     max_admit = scalar_query(conn, f'SELECT max("{admit_col}")::DATE FROM {a}')
 
     # Hospital mortality rate
-    death_col = "HOSPITAL_EXPIRE_FLAG" if is_mimic3 else "hospital_expire_flag"
+    death_col = "HOSPITAL_EXPIRE_FLAG" if uppercase else "hospital_expire_flag"
     mortality_pct = scalar_query(
         conn,
         f'SELECT round(100.0 * avg("{death_col}"), 1) FROM {a}',
     )
 
     # Median hospital length of stay (days)
-    disch_col = "DISCHTIME" if is_mimic3 else "dischtime"
+    disch_col = "DISCHTIME" if uppercase else "dischtime"
     median_los = scalar_query(
         conn,
         f"""SELECT round(median(
@@ -78,7 +83,7 @@ def compute_overview(
     if icustays_path:
         i = table_ref(icustays_path)
         total_icu_stays = scalar_query(conn, f"SELECT count(*) FROM {i}")
-        los_col = "LOS" if is_mimic3 else "los"
+        los_col = "LOS" if uppercase else "los"
         median_icu_los = scalar_query(conn, f'SELECT round(median("{los_col}"), 1) FROM {i}')
 
     return {
@@ -99,6 +104,7 @@ metrics = compute_overview(
     str(patients_path),
     str(admissions_path),
     str(icustays_path) if icustays_path else None,
+    uppercase=is_mimic3,
 )
 
 # -- Display --
