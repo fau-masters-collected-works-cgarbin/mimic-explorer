@@ -365,6 +365,7 @@ fig.update_layout(
     showlegend=True,
     legend_title_text="",
     xaxis_title="Hours from Admission",
+    margin={"t": 20, "b": 10},
 )
 # Hide color legend entries for note categories (redundant with y-axis),
 # keep symbol entries and structured event entries
@@ -450,7 +451,7 @@ else:
         height=200,
         xaxis_title="Hours from Admission",
         yaxis_title="Gap (hours)",
-        margin={"t": 10},
+        margin={"t": 10, "b": 10},
     )
     st.plotly_chart(fig_gap, width="stretch")
     st.caption(
