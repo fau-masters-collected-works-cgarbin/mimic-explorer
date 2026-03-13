@@ -59,6 +59,38 @@ def resolve_refs(tables: dict[str, Path], names: list[str]) -> dict[str, str | N
     return {name: table_ref(tables[name]) if name in tables else None for name in names}
 
 
+# Only the main note tables, not the *_detail variants (different schema)
+_NOTE_TABLE_LABELS: dict[str, str] = {
+    "discharge": "Discharge summary",
+    "radiology": "Radiology",
+}
+
+
+def note_union_ref(note_tables: dict[str, Path]) -> str | None:
+    """Build a UNION ALL SQL fragment for MIMIC-IV-Note tables.
+
+    Each table gets a synthetic ``category`` column with a human-readable label.
+    Returns a parenthesised subquery aliased as ``noteevents``, or ``None``
+    if *note_tables* is empty.
+    """
+    if not note_tables:
+        return None
+    selects = []
+    for name, path in note_tables.items():
+        if name not in _NOTE_TABLE_LABELS:
+            continue
+        label = _NOTE_TABLE_LABELS[name]
+        selects.append(
+            f"SELECT note_id, subject_id, hadm_id, note_type, note_seq, "
+            f"charttime, storetime, text, '{label}' AS category "
+            f"FROM {table_ref(path)}"
+        )
+    if not selects:
+        return None
+    union = " UNION ALL ".join(selects)
+    return f"({union}) AS noteevents"
+
+
 def scalar_query(conn: duckdb.DuckDBPyConnection, sql: str) -> object:
     """Run a SQL query and return the single scalar result.
 

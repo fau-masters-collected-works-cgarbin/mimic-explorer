@@ -12,7 +12,7 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 - `pages/dataset_at_a_glance.py` -- Key dataset metrics and contextual explanations for newcomers. UI only, uses db and config.
 - `pages/database_schema.py` -- Join key hierarchy, tables grouped by connectivity with column details in expanders, join patterns. UI only, uses db and config.
 - `pages/clinical_insights.py` -- Distributions: top diagnoses/procedures/labs, demographics, LOS. UI only, uses db.
-- `pages/note_timeline.py` -- Temporal note distribution across hospital stays. Category overview, per-admission timeline, temporal density, note-to-note intervals, note text viewer. UI only, uses db and config. MIMIC-III only (NOTEEVENTS); MIMIC-IV-Note support structured but not yet active.
+- `pages/note_timeline.py` -- Temporal note distribution across hospital stays. Category overview, per-admission timeline, temporal density, note-to-note intervals, note text viewer. UI only, uses db and config. MIMIC-III uses NOTEEVENTS; MIMIC-IV uses MIMIC-IV-Note module (discharge + radiology tables UNIONed with synthetic category column).
 - `pages/community_references.py` -- Links to external MIMIC resources. Static content, no data queries.
 
 ## Git workflow
@@ -105,7 +105,7 @@ Verified against local CSV.gz files. Use this instead of looking up columns at r
 | Race/ethnicity column | ETHNICITY (in ADMISSIONS) | race (in admissions) |
 | Input events | INPUTEVENTS_CV (CareVue) + INPUTEVENTS_MV (MetaVision) | inputevents (unified) |
 | Procedure events | PROCEDUREEVENTS_MV (MetaVision only) | procedureevents |
-| Clinical notes | NOTEEVENTS | Not in base MIMIC-IV; separate mimic-iv-note module |
+| Clinical notes | NOTEEVENTS | Not in base MIMIC-IV; separate MIMIC-IV-Note module (discharge.csv.gz + radiology.csv.gz) |
 | ROW_ID column | Present in all tables | Removed |
 
 ### Join key hierarchy
@@ -175,6 +175,20 @@ Verified against local CSV.gz files. Use this instead of looking up columns at r
 
 **icu/caregiver**: caregiver_id
 
+### MIMIC-IV-Note tables and columns
+
+Separate PhysioNet module (mimic-iv-note v2.2). Both tables share the same schema.
+
+**note/discharge**: note_id, subject_id, hadm_id, note_type, note_seq, charttime, storetime, text
+
+**note/discharge_detail**: note_id, subject_id, field_name, field_value, field_ordinal
+
+**note/radiology**: note_id, subject_id, hadm_id, note_type, note_seq, charttime, storetime, text
+
+**note/radiology_detail**: note_id, subject_id, field_name, field_value, field_ordinal
+
+The `*_detail` tables have a different schema (no hadm_id, no charttime) and are excluded from the note UNION query.
+
 ### MIMIC-III tables and columns
 
 **PATIENTS**: ROW_ID, SUBJECT_ID, GENDER, DOB, DOD, DOD_HOSP, DOD_SSN, EXPIRE_FLAG
@@ -231,3 +245,5 @@ Verified against local CSV.gz files. Use this instead of looking up columns at r
 MIMIC-III: CHARTEVENTS, LABEVENTS, INPUTEVENTS_CV, INPUTEVENTS_MV, NOTEEVENTS
 
 MIMIC-IV: chartevents, labevents, inputevents
+
+MIMIC-IV-Note: discharge, radiology
