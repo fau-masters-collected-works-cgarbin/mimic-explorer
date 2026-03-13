@@ -17,12 +17,16 @@ By default the app looks for datasets at:
 
 - MIMIC-III: `~/projects/mimic-iii/physionet.org/files/mimiciii/1.4`
 - MIMIC-IV: `~/projects/mimic-iv/physionet.org/files/mimiciv/3.1`
+- MIMIC-IV-Note: `~/projects/mimic-iv-note/physionet.org/files/mimic-iv-note/2.2/note`
+
+MIMIC-IV-Note is a separate PhysioNet module containing clinical notes for MIMIC-IV (discharge summaries and radiology reports). Download it from [PhysioNet](https://physionet.org/content/mimic-iv-note/) after credentialing. The note timeline page uses this module when working with MIMIC-IV.
 
 To use different paths, set environment variables before launching:
 
 ```bash
 export MIMIC_III_PATH=/your/path/to/mimiciii/1.4
 export MIMIC_IV_PATH=/your/path/to/mimiciv/3.1
+export MIMIC_IV_NOTE_PATH=/your/path/to/mimic-iv-note/2.2/note
 uv run streamlit run app.py
 ```
 
@@ -36,7 +40,7 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 
 **Clinical Insights** shows distributions across the dataset: top diagnoses, procedures, and lab tests; patient demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding the patient population before designing cohort filters.
 
-**Temporal Note Timeline** (MIMIC-III only) explores clinical notes across hospital stays. It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
+**Temporal Note Timeline** (MIMIC-III and MIMIC-IV-Note) explores clinical notes across hospital stays. It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
 
 **Community References** collects links to official documentation, tutorial notebooks, the mimic-code repository, and other community resources.
 

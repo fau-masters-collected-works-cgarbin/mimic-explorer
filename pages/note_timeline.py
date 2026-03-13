@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import get_connection, resolve_refs
+from mimic_explorer.db import get_connection, note_union_ref, resolve_refs
 
 st.title("Temporal Note Timeline")
 
@@ -18,15 +18,26 @@ tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
 refs = resolve_refs(tables, ["noteevents", "admissions"])
-noteevents_ref = refs["noteevents"]
 admissions_ref = refs["admissions"]
 
+if is_mimic3:
+    noteevents_ref = refs["noteevents"]
+else:
+    note_tables = dataset.find_note_tables()
+    noteevents_ref = note_union_ref(note_tables)
+
 if not noteevents_ref:
-    st.info(
-        "This page requires clinical notes. MIMIC-III includes NOTEEVENTS; "
-        "MIMIC-IV stores notes in a separate module (MIMIC-IV-Note) that "
-        "is not currently configured."
-    )
+    if is_mimic3:
+        st.info(
+            "This page requires the NOTEEVENTS table, which was not found "
+            "in the MIMIC-III directory."
+        )
+    else:
+        st.info(
+            "This page requires MIMIC-IV-Note (a separate PhysioNet download). "
+            "Set the MIMIC_IV_NOTE_PATH environment variable to the directory "
+            "containing discharge.csv.gz and radiology.csv.gz, then restart the app."
+        )
     st.stop()
 
 if not admissions_ref:
@@ -46,9 +57,9 @@ if is_mimic3:
     admit_col = "ADMITTIME"
     disch_col = "DISCHTIME"
 else:
-    # Placeholder for MIMIC-IV-Note -- column names TBD when module is added
+    # MIMIC-IV-Note: category is synthetic from UNION, no chartdate, no ISERROR
     category_col = "category"
-    chartdate_col = "chartdate"
+    chartdate_col = None
     charttime_col = "charttime"
     hadm_col = "hadm_id"
     row_id_col = "note_id"
@@ -185,18 +196,23 @@ def admission_notes(ds, hadm):
         f'"{row_id_col}"',
         f'"{category_col}"',
         f'"{description_col}"',
-        f'"{chartdate_col}"',
         f'"{charttime_col}"',
     ]
+    if chartdate_col:
+        cols.append(f'"{chartdate_col}"')
     where_parts = [f'"{hadm_col}" = {hadm}']
     if error_filter:
         where_parts.append(error_filter)
     where = "WHERE " + " AND ".join(where_parts)
+    if chartdate_col:
+        order = f'COALESCE("{charttime_col}"::TIMESTAMP, "{chartdate_col}"::TIMESTAMP)'
+    else:
+        order = f'"{charttime_col}"::TIMESTAMP'
     return conn.execute(f"""
         SELECT {", ".join(cols)}
         FROM {noteevents_ref}
         {where}
-        ORDER BY COALESCE("{charttime_col}"::TIMESTAMP, "{chartdate_col}"::TIMESTAMP)
+        ORDER BY {order}
     """).fetchdf()
 
 
@@ -207,10 +223,14 @@ if df_notes.empty:
     st.stop()
 
 # Compute unified timestamp for each note: use CHARTTIME when available, fall back to CHARTDATE
-df_notes["timestamp"] = pd.to_datetime(
-    df_notes[charttime_col], format="mixed", errors="coerce"
-).fillna(pd.to_datetime(df_notes[chartdate_col], format="mixed", errors="coerce"))
-df_notes["has_exact_time"] = df_notes[charttime_col].notna()
+if chartdate_col:
+    df_notes["timestamp"] = pd.to_datetime(
+        df_notes[charttime_col], format="mixed", errors="coerce"
+    ).fillna(pd.to_datetime(df_notes[chartdate_col], format="mixed", errors="coerce"))
+    df_notes["has_exact_time"] = df_notes[charttime_col].notna()
+else:
+    df_notes["timestamp"] = pd.to_datetime(df_notes[charttime_col], format="mixed", errors="coerce")
+    df_notes["has_exact_time"] = True
 
 # Compute hours from admission
 admit_ts = pd.Timestamp(bounds["admit"])
@@ -233,30 +253,55 @@ st.markdown(
 
 # ── Timeline scatter plot ──
 
-fig = px.strip(
+# Build a detailed y-axis label: "Category / Description" when description adds info
+df_notes["timeline_label"] = df_notes.apply(
+    lambda r: (
+        f"{r[category_col]} / {r[description_col]}"
+        if pd.notna(r[description_col]) and r[description_col] != r[category_col]
+        else r[category_col]
+    ),
+    axis=1,
+)
+
+# Map has_exact_time to a label for the legend
+df_notes["precision"] = df_notes["has_exact_time"].map(
+    {True: "Exact time", False: "Date only (midnight)"}
+)
+
+fig = px.scatter(
     df_notes,
     x="hours_from_admit",
-    y=category_col,
-    color=category_col,
+    y="timeline_label",
+    color="timeline_label",
+    symbol="precision",
+    symbol_map={"Exact time": "circle", "Date only (midnight)": "diamond-open"},
     hover_data={
         description_col: True,
-        "has_exact_time": True,
+        "precision": True,
         "hours_from_admit": ":.1f",
         category_col: False,
     },
-    labels={"hours_from_admit": "Hours from Admission", category_col: ""},
+    labels={"hours_from_admit": "Hours from Admission", "timeline_label": ""},
 )
 
 fig.add_vline(x=0, line_dash="dash", line_color="green", annotation_text="Admit")
 fig.add_vline(x=los_hours, line_dash="dash", line_color="red", annotation_text="Discharge")
 
 fig.update_layout(
-    height=max(250, 80 * df_notes[category_col].nunique()),
-    showlegend=False,
+    height=max(250, 80 * df_notes["timeline_label"].nunique()),
+    showlegend=True,
+    legend_title_text="",
     xaxis_title="Hours from Admission",
 )
+# Hide color legend entries (redundant with y-axis), keep only symbol entries
+for trace in fig.data:
+    if trace.marker.symbol in (None, "circle"):
+        trace.showlegend = False
 st.plotly_chart(fig, width="stretch")
-st.caption("Hover over points for details. Notes with date-only timestamps are placed at midnight.")
+st.caption(
+    "Notes with date-only timestamps (diamonds) are placed at midnight, "
+    "which can make same-day notes appear before the recorded admission time."
+)
 
 # ── Section 3: Temporal Density and Intervals ──
 
@@ -340,7 +385,7 @@ df_notes["label"] = (
 selected_label = st.selectbox("Select a note to read", options=df_notes["label"].tolist())
 
 if selected_label:
-    selected_row_id = int(selected_label.split(" | ")[0])
+    selected_row_id = selected_label.split(" | ")[0]
 
     @st.cache_data(show_spinner="Fetching note text...")
     def fetch_note_text(ds, rid):
@@ -348,7 +393,7 @@ if selected_label:
         result = conn.execute(f"""
             SELECT "{text_col}"
             FROM {noteevents_ref}
-            WHERE "{row_id_col}" = {rid}
+            WHERE CAST("{row_id_col}" AS VARCHAR) = '{rid}'
         """).fetchone()
         return result[0] if result else None
 
