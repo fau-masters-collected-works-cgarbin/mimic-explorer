@@ -74,3 +74,25 @@ def test_find_note_tables_nonexistent_path(tmp_path):
         note_path=tmp_path / "nonexistent",
     )
     assert config.find_note_tables() == {}
+
+
+def test_col_mimic3():
+    config = DatasetConfig(name="MIMIC-III test", base_path=Path("/fake"), uppercase_filenames=True)
+    assert config.col("gender") == "GENDER"
+    assert config.col("race") == "ETHNICITY"
+    assert config.col("icu_key") == "icustay_id"
+    assert config.col("iserror") == "ISERROR"
+    assert config.col("chartdate") == "CHARTDATE"
+    assert config.col("careunit") == "CURR_CAREUNIT"
+    assert config.col("nonexistent") is None
+
+
+def test_col_mimic4():
+    config = DatasetConfig(name="MIMIC-IV test", base_path=Path("/fake"))
+    assert config.col("gender") == "gender"
+    assert config.col("race") == "race"
+    assert config.col("icu_key") == "stay_id"
+    assert config.col("iserror") is None
+    assert config.col("chartdate") is None
+    assert config.col("careunit") == "careunit"
+    assert config.col("nonexistent") is None

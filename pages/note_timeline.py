@@ -51,72 +51,39 @@ if not admissions_ref:
     st.error("Could not find ADMISSIONS table in this dataset.")
     st.stop()
 
-# Column name mappings -- MIMIC-III uses UPPERCASE, MIMIC-IV uses lowercase.
-# Notes and admissions columns used directly throughout the page.
-# Structured event columns grouped by table for use in per-admission queries.
-if is_mimic3:
-    category_col = "CATEGORY"
-    chartdate_col = "CHARTDATE"
-    charttime_col = "CHARTTIME"
-    hadm_col = "HADM_ID"
-    row_id_col = "ROW_ID"
-    iserror_col = "ISERROR"
-    description_col = "DESCRIPTION"
-    text_col = "TEXT"
-    admit_col = "ADMITTIME"
-    disch_col = "DISCHTIME"
-    lab_cols = {
-        "charttime": "CHARTTIME",
-        "flag": "FLAG",
-        "itemid": "ITEMID",
-        "hadm": "HADM_ID",
-        "value": "VALUE",
-        "valueuom": "VALUEUOM",
-    }
-    xfer_cols = {
-        "intime": "INTIME",
-        "eventtype": "EVENTTYPE",
-        "careunit": "CURR_CAREUNIT",
-        "hadm": "HADM_ID",
-    }
-    rx_cols = {
-        "starttime": "STARTDATE",
-        "stoptime": "ENDDATE",
-        "drug": "DRUG",
-        "hadm": "HADM_ID",
-    }
-else:
-    # MIMIC-IV-Note: category is synthetic from UNION, no chartdate, no ISERROR
-    category_col = "category"
-    chartdate_col = None
-    charttime_col = "charttime"
-    hadm_col = "hadm_id"
-    row_id_col = "note_id"
-    iserror_col = None
-    description_col = "note_type"
-    text_col = "text"
-    admit_col = "admittime"
-    disch_col = "dischtime"
-    lab_cols = {
-        "charttime": "charttime",
-        "flag": "flag",
-        "itemid": "itemid",
-        "hadm": "hadm_id",
-        "value": "value",
-        "valueuom": "valueuom",
-    }
-    xfer_cols = {
-        "intime": "intime",
-        "eventtype": "eventtype",
-        "careunit": "careunit",
-        "hadm": "hadm_id",
-    }
-    rx_cols = {
-        "starttime": "starttime",
-        "stoptime": "stoptime",
-        "drug": "drug",
-        "hadm": "hadm_id",
-    }
+# Column names
+category_col = dataset.col("category")
+chartdate_col = dataset.col("chartdate")
+charttime_col = dataset.col("charttime")
+hadm_col = dataset.col("hadm_id")
+row_id_col = dataset.col("note_id")
+iserror_col = dataset.col("iserror")
+description_col = dataset.col("note_type")
+text_col = dataset.col("text")
+admit_col = dataset.col("admittime")
+disch_col = dataset.col("dischtime")
+
+# Structured event columns grouped by table for use in per-admission queries
+lab_cols = {
+    "charttime": dataset.col("charttime"),
+    "flag": dataset.col("flag"),
+    "itemid": dataset.col("itemid"),
+    "hadm": dataset.col("hadm_id"),
+    "value": dataset.col("value"),
+    "valueuom": dataset.col("valueuom"),
+}
+xfer_cols = {
+    "intime": dataset.col("intime"),
+    "eventtype": dataset.col("eventtype"),
+    "careunit": dataset.col("careunit"),
+    "hadm": dataset.col("hadm_id"),
+}
+rx_cols = {
+    "starttime": dataset.col("rx_starttime"),
+    "stoptime": dataset.col("rx_stoptime"),
+    "drug": dataset.col("drug"),
+    "hadm": dataset.col("hadm_id"),
+}
 
 st.markdown(
     "Clinical notes and structured events across a hospital stay: "

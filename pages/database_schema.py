@@ -14,8 +14,7 @@ dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
-
-ICU_KEY = "icustay_id" if is_mimic3 else "stay_id"
+ICU_KEY = dataset.col("icu_key")
 
 
 # -- Scan schema --
