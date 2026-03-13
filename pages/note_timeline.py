@@ -399,79 +399,65 @@ if len(df_notes) < 3:
         "See the timeline above for the full picture of clinical activity."
     )
 else:
-    col_hist, col_intervals = st.columns(2)
+    st.markdown("**Note-to-note intervals**")
+    sorted_notes = df_notes.sort_values("timestamp")
+    intervals = sorted_notes["timestamp"].diff().dt.total_seconds() / 3600
+    intervals = intervals.dropna()
 
-    with col_hist:
-        st.markdown("**Notes per 6-hour block**")
-        fig_hist = px.histogram(
-            df_notes,
-            x="hours_from_admit",
-            nbins=max(4, int(los_hours / 6)),
-            labels={"hours_from_admit": "Hours from Admission", "count": "Notes"},
+    # Position each gap at the second note (when documentation resumed)
+    hours = sorted_notes["hours_from_admit"].to_numpy()
+
+    interval_df = pd.DataFrame(
+        {
+            "hours_from_admit": hours[1:],
+            "gap_hours": intervals.to_numpy(),
+        }
+    )
+    interval_df["gap_hours"] = interval_df["gap_hours"].round(1)
+
+    median_gap = interval_df["gap_hours"].median()
+    max_gap = interval_df["gap_hours"].max()
+    long_gaps = int((interval_df["gap_hours"] > 12).sum())
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Median gap", f"{median_gap:.1f}h")
+    m2.metric("Longest gap", f"{max_gap:.1f}h")
+    if long_gaps > 0:
+        m3.metric("Gaps >12h", long_gaps)
+
+    fig_gap = go.Figure()
+    fig_gap.add_trace(
+        go.Scatter(
+            x=interval_df["hours_from_admit"],
+            y=interval_df["gap_hours"],
+            mode="markers",
+            marker={"size": 7, "color": "#636EFA"},
+            hovertemplate="Hour %{x:.1f}<br>Gap: %{y:.1f}h<extra></extra>",
         )
-        fig_hist.update_layout(height=300)
-        st.plotly_chart(fig_hist, width="stretch")
-
-    with col_intervals:
-        st.markdown("**Note-to-note intervals**")
-        sorted_notes = df_notes.sort_values("timestamp")
-        intervals = sorted_notes["timestamp"].diff().dt.total_seconds() / 3600
-        intervals = intervals.dropna()
-
-        # Position each gap at the second note (when documentation resumed)
-        hours = sorted_notes["hours_from_admit"].to_numpy()
-
-        interval_df = pd.DataFrame(
-            {
-                "hours_from_admit": hours[1:],
-                "gap_hours": intervals.to_numpy(),
-            }
+    )
+    # Stems: vertical lines from baseline to each marker
+    for _, row in interval_df.iterrows():
+        fig_gap.add_shape(
+            type="line",
+            x0=row["hours_from_admit"],
+            x1=row["hours_from_admit"],
+            y0=0,
+            y1=row["gap_hours"],
+            line={"color": "#636EFA", "width": 2},
         )
-        interval_df["gap_hours"] = interval_df["gap_hours"].round(1)
-
-        median_gap = interval_df["gap_hours"].median()
-        max_gap = interval_df["gap_hours"].max()
-        long_gaps = int((interval_df["gap_hours"] > 12).sum())
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Median gap", f"{median_gap:.1f}h")
-        m2.metric("Longest gap", f"{max_gap:.1f}h")
-        if long_gaps > 0:
-            m3.metric("Gaps >12h", long_gaps)
-
-        fig_gap = go.Figure()
-        fig_gap.add_trace(
-            go.Scatter(
-                x=interval_df["hours_from_admit"],
-                y=interval_df["gap_hours"],
-                mode="markers",
-                marker={"size": 7, "color": "#636EFA"},
-                hovertemplate="Hour %{x:.1f}<br>Gap: %{y:.1f}h<extra></extra>",
-            )
-        )
-        # Stems: vertical lines from baseline to each marker
-        for _, row in interval_df.iterrows():
-            fig_gap.add_shape(
-                type="line",
-                x0=row["hours_from_admit"],
-                x1=row["hours_from_admit"],
-                y0=0,
-                y1=row["gap_hours"],
-                line={"color": "#636EFA", "width": 2},
-            )
-        fig_gap.add_hline(y=12, line_dash="dot", line_color="orange", annotation_text="12h")
-        fig_gap.update_layout(
-            height=200,
-            xaxis_title="Hours from Admission",
-            yaxis_title="Gap (hours)",
-            margin={"t": 10},
-        )
-        st.plotly_chart(fig_gap, width="stretch")
-        st.caption(
-            "Each stem shows the time elapsed since the previous note. "
-            "Tall stems indicate documentation gaps; short ones indicate bursts of activity. "
-            "Gaps above the 12h line often align with overnight periods or weekends."
-        )
+    fig_gap.add_hline(y=12, line_dash="dot", line_color="orange", annotation_text="12h")
+    fig_gap.update_layout(
+        height=200,
+        xaxis_title="Hours from Admission",
+        yaxis_title="Gap (hours)",
+        margin={"t": 10},
+    )
+    st.plotly_chart(fig_gap, width="stretch")
+    st.caption(
+        "Each stem shows the time elapsed since the previous note. "
+        "Tall stems indicate documentation gaps; short ones indicate bursts of activity. "
+        "Gaps above the 12h line often align with overnight periods or weekends."
+    )
 
 # ── Section 4: Note Text Viewer ──
 
