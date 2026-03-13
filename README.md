@@ -21,11 +21,14 @@ By default the app looks for datasets at:
 - MIMIC-IV: `~/projects/mimic-iv/physionet.org/files/mimiciv/3.1`
 - MIMIC-IV-Note: `~/projects/mimic-iv-note/physionet.org/files/mimic-iv-note/2.2/note`
 
+All datasets are optional.
+
 MIMIC-IV-Note is a separate PhysioNet module containing clinical notes for MIMIC-IV (discharge summaries and radiology reports). Download it from [PhysioNet](https://physionet.org/content/mimic-iv-note/) after credentialing. The Clinical Timeline page uses this module for notes when working with MIMIC-IV.
 
 To use different paths, set environment variables before launching:
 
 ```bash
+# All optional, set only the ones you need
 export MIMIC_III_PATH=/your/path/to/mimiciii/1.4
 export MIMIC_IV_PATH=/your/path/to/mimiciv/3.1
 export MIMIC_IV_NOTE_PATH=/your/path/to/mimic-iv-note/2.2/note
