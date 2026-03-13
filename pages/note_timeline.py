@@ -418,13 +418,12 @@ else:
         intervals = sorted_notes["timestamp"].diff().dt.total_seconds() / 3600
         intervals = intervals.dropna()
 
-        # Position each gap at the midpoint between the two notes that define it
+        # Position each gap at the second note (when documentation resumed)
         hours = sorted_notes["hours_from_admit"].to_numpy()
-        midpoints = (hours[:-1] + hours[1:]) / 2
 
         interval_df = pd.DataFrame(
             {
-                "hours_from_admit": midpoints,
+                "hours_from_admit": hours[1:],
                 "gap_hours": intervals.to_numpy(),
             }
         )
@@ -440,7 +439,26 @@ else:
         if long_gaps > 0:
             m3.metric("Gaps >12h", long_gaps)
 
-        fig_gap = go.Figure(go.Bar(x=interval_df["hours_from_admit"], y=interval_df["gap_hours"]))
+        fig_gap = go.Figure()
+        fig_gap.add_trace(
+            go.Scatter(
+                x=interval_df["hours_from_admit"],
+                y=interval_df["gap_hours"],
+                mode="markers",
+                marker={"size": 7, "color": "#636EFA"},
+                hovertemplate="Hour %{x:.1f}<br>Gap: %{y:.1f}h<extra></extra>",
+            )
+        )
+        # Stems: vertical lines from baseline to each marker
+        for _, row in interval_df.iterrows():
+            fig_gap.add_shape(
+                type="line",
+                x0=row["hours_from_admit"],
+                x1=row["hours_from_admit"],
+                y0=0,
+                y1=row["gap_hours"],
+                line={"color": "#636EFA", "width": 2},
+            )
         fig_gap.add_hline(y=12, line_dash="dot", line_color="orange", annotation_text="12h")
         fig_gap.update_layout(
             height=200,
@@ -450,8 +468,8 @@ else:
         )
         st.plotly_chart(fig_gap, width="stretch")
         st.caption(
-            "Each bar is the time elapsed between two consecutive notes. "
-            "Tall bars indicate documentation gaps; short bars indicate bursts of activity. "
+            "Each stem shows the time elapsed since the previous note. "
+            "Tall stems indicate documentation gaps; short ones indicate bursts of activity. "
             "Gaps above the 12h line often align with overnight periods or weekends."
         )
 
