@@ -361,7 +361,7 @@ if not df_meds.empty:
     n_rows += 1
 
 fig.update_layout(
-    height=max(250, 40 * n_rows),
+    height=max(200, 30 * n_rows),
     showlegend=True,
     legend_title_text="",
     xaxis_title="Hours from Admission",
@@ -385,19 +385,12 @@ if is_mimic3:
     )
 st.caption(" ".join(caption_parts))
 
-# ── Section 3: Note Documentation Patterns ──
-
-st.subheader("Note Documentation Patterns")
-st.caption(
-    "How notes are distributed over the stay and where documentation gaps occur. "
-    "Structured events are not included here -- see the timeline above for the full picture."
-)
+# ── Section 3: Note-to-note intervals ──
 
 if len(df_notes) < 3:
     st.caption(
-        f"Too few notes for temporal density analysis ({len(df_notes)} note"
-        f"{'s' if len(df_notes) != 1 else ''} in this admission). "
-        "See the timeline above for the full picture of clinical activity."
+        f"Too few notes for interval analysis ({len(df_notes)} note"
+        f"{'s' if len(df_notes) != 1 else ''})."
     )
 else:
     st.markdown("**Note-to-note intervals**")
@@ -420,11 +413,10 @@ else:
     max_gap = interval_df["gap_hours"].max()
     long_gaps = int((interval_df["gap_hours"] > 12).sum())
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Median gap", f"{median_gap:.1f}h")
-    m2.metric("Longest gap", f"{max_gap:.1f}h")
+    gaps_text = f"Median gap: {median_gap:.1f}h · Longest gap: {max_gap:.1f}h"
     if long_gaps > 0:
-        m3.metric("Gaps >12h", long_gaps)
+        gaps_text += f" · Gaps >12h: {long_gaps}"
+    st.caption(gaps_text)
 
     fig_gap = go.Figure()
     fig_gap.add_trace(
