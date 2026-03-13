@@ -72,7 +72,7 @@ Pre-commit hooks run automatically on commit: ruff (lint + format), trailing-whi
 
 ## Code style
 
-- Python 3.11+ features are fine.
+- Python 3.12+ features are fine.
 - Type hints on function signatures in logic modules (`config.py`, `db.py`).
 - Annotations optional in Streamlit pages and `app.py`.
 - S608 (SQL injection) suppressed for `table_ref()` interpolation -- these SQL fragments are built from local file paths discovered by `config.py`, not from user input.
