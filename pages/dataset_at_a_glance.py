@@ -28,7 +28,7 @@ if not patients_path or not admissions_path:
 @st.cache_data(show_spinner="Computing dataset overview...")
 def compute_overview(
     dataset_name: str,
-    patients_path: str,
+    patients_path: str,  # str (not Path) because st.cache_data needs hashable args
     admissions_path: str,
     icustays_path: str | None,
     *,

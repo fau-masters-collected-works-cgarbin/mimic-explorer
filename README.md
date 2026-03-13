@@ -54,7 +54,7 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 
 **Clinical Insights** shows distributions across the dataset: top diagnoses, procedures, and lab tests; patient demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding the patient population before designing cohort filters.
 
-**Temporal Note Timeline** (MIMIC-III and MIMIC-IV-Note) explores clinical notes across hospital stays. It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
+**Temporal Note Timeline** explores clinical notes across hospital stays (uses NOTEEVENTS for MIMIC-III, or the separate MIMIC-IV-Note module for MIMIC-IV). It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
 
 **Community References** collects links to official documentation, tutorial notebooks, the mimic-code repository, and other community resources.
 
