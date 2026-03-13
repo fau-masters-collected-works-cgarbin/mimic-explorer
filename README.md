@@ -1,6 +1,6 @@
 # MIMIC Explorer
 
-Interactive Streamlit app for exploring MIMIC-III and MIMIC-IV clinical datasets. Reads CSV.gz files directly with DuckDB -- no ETL, no database setup.
+Explore MIMIC-III and MIMIC-IV clinical datasets interactively. Reads CSV.gz files directly with DuckDB -- no ETL, no database setup.
 
 <img src="docs/images/temporal-note-timeline.jpg" width="700" alt="Temporal note timeline showing per-admission note distribution with category breakdown and documentation gaps">
 
@@ -44,7 +44,7 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 <img src="docs/images/dataset-at-a-glance.jpg" width="700" alt="Dataset at a Glance showing key metrics for MIMIC-III">
 </details>
 
-**Database Schema** shows how tables relate to each other through the `subject_id` / `hadm_id` / `icustay_id` join key hierarchy. Tables are grouped by connectivity, each expandable to show column details. Ready-to-use join patterns are included so you can start writing queries against the tables you care about.
+**Database Schema** shows how tables relate to each other through the `subject_id` / `hadm_id` / `icustay_id` (MIMIC-III) or `stay_id` (MIMIC-IV) join key hierarchy. Tables are grouped by connectivity, each expandable to show column details. Ready-to-use join patterns are included (e.g., linking patients to their ICU stays) so you can start writing queries against the tables you care about.
 
 <details>
 <summary>Screenshot</summary>
@@ -52,13 +52,14 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 <img src="docs/images/database-schema.jpg" width="700" alt="Database schema showing join key hierarchy and table relationships">
 </details>
 
-**Clinical Insights** shows distributions across the dataset: top diagnoses, procedures, and lab tests; patient demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding the patient population before designing cohort filters.
+**Clinical Insights** shows a profile of the patient population: top diagnoses, procedures, and lab tests; demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding who is in the dataset before designing cohort filters.
 
 **Temporal Note Timeline** explores clinical notes across hospital stays (uses NOTEEVENTS for MIMIC-III, or the separate MIMIC-IV-Note module for MIMIC-IV). It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
 
 **Community References** collects links to official documentation, tutorial notebooks, the mimic-code repository, and other community resources.
 
-## How this relates to existing MIMIC resources
+<details>
+<summary>How this relates to existing MIMIC resources</summary>
 
 The MIMIC ecosystem already has good resources, but they serve different purposes.
 
@@ -72,4 +73,6 @@ The MIMIC ecosystem already has good resources, but they serve different purpose
 
 **SchemaSpy** ([lcp.mit.edu/mimic-schema-spy](https://lcp.mit.edu/mimic-schema-spy/)) is the closest thing to an interactive schema explorer. Generated from a PostgreSQL load of MIMIC-III, it provides clickable table views, foreign key diagrams, column-level metadata, and relationship navigation. It's thorough for schema structure, but covers MIMIC-III only (generated in 2017), requires a Postgres load to regenerate, shows metadata without actual data browsing, and doesn't provide dataset-level clinical context. A [GitHub issue](https://github.com/MIT-LCP/mimic-code/issues/183) also collected community-contributed ER diagrams, and the MIMIC-IV [Scientific Data paper](https://www.nature.com/articles/s41597-022-01899-x) includes schema figures.
 
-**What this tool adds**: dataset-level orientation (key statistics with clinical context), interactive exploration of CSV.gz files with no database setup, and support for both MIMIC-III and MIMIC-IV. It's the "guided tour" layer that sits between the official docs (reference) and mimic-code (analysis). For schema relationships specifically, SchemaSpy's FK diagrams are more detailed than what we show -- our join key matrix is a simpler view focused on the three core identifiers that matter most for getting started.
+**What this tool adds**: dataset-level orientation (key statistics with clinical context), interactive exploration of CSV.gz files with no database setup, and support for both MIMIC-III and MIMIC-IV. It's the "guided tour" layer that sits between the official docs (reference) and mimic-code (analysis). For schema relationships specifically, SchemaSpy's FK diagrams are more detailed than what we show -- our connectivity-level grouping is a simpler view focused on the core identifiers that matter most for getting started.
+
+</details>
