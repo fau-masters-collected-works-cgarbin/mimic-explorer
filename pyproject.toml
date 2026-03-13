@@ -3,7 +3,7 @@ name = "mimic-explorer"
 version = "0.1.0"
 description = "Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets"
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [{ name = "Christian Garbin" }]
 dependencies = [
     "duckdb",
@@ -26,7 +26,7 @@ default-groups = ["dev", "test"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 src = ["src"]
 
 [tool.ruff.lint]
