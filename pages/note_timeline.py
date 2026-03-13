@@ -1,7 +1,6 @@
 """Clinical Timeline -- notes and structured events across a hospital stay."""
 
 import random
-from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import plotly.express as px
@@ -9,7 +8,14 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import get_connection, note_union_ref, resolve_refs
+from mimic_explorer.db import note_union_ref, resolve_refs
+from mimic_explorer.timeline_queries import (
+    fetch_admission_bounds,
+    fetch_admission_data,
+    fetch_category_counts,
+    fetch_note_text,
+    fetch_random_hadm_ids,
+)
 
 st.title("Clinical Timeline")
 
@@ -85,14 +91,25 @@ rx_cols = {
     "hadm": dataset.col("hadm_id"),
 }
 
+# Parameters for _fetch_notes (passed via fetch_admission_data)
+note_cols = {
+    "row_id_col": row_id_col,
+    "category_col": category_col,
+    "description_col": description_col,
+    "charttime_col": charttime_col,
+    "chartdate_col": chartdate_col,
+    "hadm_col": hadm_col,
+    "error_filter": (
+        f'("{iserror_col}" != \'1\' OR "{iserror_col}" IS NULL)' if iserror_col else None
+    ),
+}
+error_filter = note_cols["error_filter"]
+
 st.markdown(
     "Clinical notes and structured events across a hospital stay: "
     "where documentation clusters, where gaps appear, and how notes "
     "relate to lab results, unit transfers, and medication changes."
 )
-
-# Error filter used in multiple queries
-error_filter = f'("{iserror_col}" != \'1\' OR "{iserror_col}" IS NULL)' if iserror_col else None
 
 # ── Section 1: Category Distribution ──
 
@@ -101,19 +118,11 @@ st.caption("Distribution of note types across the entire dataset.")
 
 
 @st.cache_data(show_spinner="Counting notes by category (first run may take ~10s)...")
-def category_counts(ds):
-    conn = get_connection()
-    where = f"WHERE {error_filter}" if error_filter else ""
-    return conn.execute(f"""
-        SELECT "{category_col}" AS category, COUNT(*) AS count
-        FROM {noteevents_ref}
-        {where}
-        GROUP BY "{category_col}"
-        ORDER BY count DESC
-    """).fetchdf()
+def _cached_category_counts(ds):
+    return fetch_category_counts(noteevents_ref, category_col, error_filter)
 
 
-df_cats = category_counts(dataset.name)
+df_cats = _cached_category_counts(dataset.name)
 
 fig = px.bar(
     df_cats,
@@ -136,27 +145,10 @@ hadm_id_input = st.sidebar.text_input(
 if st.sidebar.button("Random admission", help="Pick a random admission with multiple notes"):
 
     @st.cache_data(show_spinner="Finding admissions with multiple notes...")
-    def random_hadm_ids(ds):
-        """Cache admissions with 3+ notes to avoid landing on single-note stays."""
-        conn = get_connection()
-        where_parts = [f'"{hadm_col}" IS NOT NULL']
-        if error_filter:
-            where_parts.append(error_filter)
-        where = "WHERE " + " AND ".join(where_parts)
-        return [
-            row[0]
-            for row in conn.execute(f"""
-                SELECT "{hadm_col}" FROM (
-                    SELECT "{hadm_col}"
-                    FROM {noteevents_ref}
-                    {where}
-                    GROUP BY "{hadm_col}"
-                    HAVING COUNT(*) >= 3
-                ) USING SAMPLE 50
-            """).fetchall()
-        ]
+    def _cached_random_hadm_ids(ds):
+        return fetch_random_hadm_ids(noteevents_ref, hadm_col, error_filter)
 
-    candidates = random_hadm_ids(dataset.name)
+    candidates = _cached_random_hadm_ids(dataset.name)
     if candidates:
         st.session_state["hadm_id_for_timeline"] = str(random.choice(candidates))  # noqa: S311
         st.rerun()
@@ -184,22 +176,11 @@ except ValueError:
 
 
 @st.cache_data(show_spinner="Fetching admission times...")
-def admission_bounds(ds, hadm):
-    conn = get_connection()
-    result = conn.execute(
-        f"""
-        SELECT "{admit_col}"::TIMESTAMP AS admit, "{disch_col}"::TIMESTAMP AS disch
-        FROM {admissions_ref}
-        WHERE "{hadm_col}" = $1
-    """,
-        [hadm],
-    ).fetchone()
-    if not result:
-        return None
-    return {"admit": result[0], "disch": result[1]}
+def _cached_admission_bounds(ds, hadm):
+    return fetch_admission_bounds(admissions_ref, hadm, hadm_col, admit_col, disch_col)
 
 
-bounds = admission_bounds(dataset.name, hadm_id)
+bounds = _cached_admission_bounds(dataset.name, hadm_id)
 if not bounds:
     st.warning(f"No admission found for HADM_ID = {hadm_id}.")
     st.stop()
@@ -212,112 +193,24 @@ transfers_ref = refs["transfers"]
 prescriptions_ref = refs["prescriptions"]
 
 
-def _fetch_notes(hadm):
-    conn = get_connection()
-    cols = [
-        f'"{row_id_col}"',
-        f'"{category_col}"',
-        f'"{description_col}"',
-        f'"{charttime_col}"',
-    ]
-    if chartdate_col:
-        cols.append(f'"{chartdate_col}"')
-    where_parts = [f'"{hadm_col}" = $1']
-    if error_filter:
-        where_parts.append(error_filter)
-    where = "WHERE " + " AND ".join(where_parts)
-    if chartdate_col:
-        order = f'COALESCE("{charttime_col}"::TIMESTAMP, "{chartdate_col}"::TIMESTAMP)'
-    else:
-        order = f'"{charttime_col}"::TIMESTAMP'
-    return conn.execute(
-        f"""
-        SELECT {", ".join(cols)}
-        FROM {noteevents_ref}
-        {where}
-        ORDER BY {order}
-    """,
-        [hadm],
-    ).fetchdf()
-
-
-def _fetch_abnormal_labs(hadm, ref):
-    if ref is None:
-        return pd.DataFrame()
-    c = lab_cols
-    conn = get_connection()
-    return conn.execute(
-        f"""
-        SELECT "{c["charttime"]}"::TIMESTAMP AS timestamp,
-               "{c["value"]}" AS value,
-               "{c["valueuom"]}" AS unit,
-               "{c["flag"]}" AS flag,
-               CAST("{c["itemid"]}" AS VARCHAR) AS itemid
-        FROM {ref}
-        WHERE "{c["hadm"]}" = $1
-          AND "{c["flag"]}" IS NOT NULL AND "{c["flag"]}" != ''
-          AND "{c["charttime"]}" IS NOT NULL
-        ORDER BY "{c["charttime"]}"
-    """,
-        [hadm],
-    ).fetchdf()
-
-
-def _fetch_transfers(hadm, ref):
-    if ref is None:
-        return pd.DataFrame()
-    c = xfer_cols
-    conn = get_connection()
-    return conn.execute(
-        f"""
-        SELECT "{c["intime"]}"::TIMESTAMP AS timestamp,
-               "{c["eventtype"]}" AS eventtype,
-               "{c["careunit"]}" AS careunit
-        FROM {ref}
-        WHERE "{c["hadm"]}" = $1
-          AND "{c["intime"]}" IS NOT NULL
-        ORDER BY "{c["intime"]}"
-    """,
-        [hadm],
-    ).fetchdf()
-
-
-def _fetch_meds(hadm, ref):
-    if ref is None:
-        return pd.DataFrame()
-    c = rx_cols
-    conn = get_connection()
-    return conn.execute(
-        f"""
-        SELECT "{c["starttime"]}"::TIMESTAMP AS start_time,
-               "{c["stoptime"]}"::TIMESTAMP AS stop_time,
-               "{c["drug"]}" AS drug
-        FROM {ref}
-        WHERE "{c["hadm"]}" = $1
-          AND "{c["starttime"]}" IS NOT NULL
-        ORDER BY "{c["starttime"]}"
-    """,
-        [hadm],
-    ).fetchdf()
-
-
 @st.cache_data(show_spinner="Loading admission data (first run may take ~10s)...")
-def admission_data(ds, hadm, _lab_ref, _xfer_ref, _rx_ref):
-    """Fetch notes and structured events in parallel (each thread gets its own connection)."""
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        notes_future = pool.submit(_fetch_notes, hadm)
-        lab_future = pool.submit(_fetch_abnormal_labs, hadm, _lab_ref)
-        xfer_future = pool.submit(_fetch_transfers, hadm, _xfer_ref)
-        med_future = pool.submit(_fetch_meds, hadm, _rx_ref)
-    return {
-        "notes": notes_future.result(),
-        "labs": lab_future.result(),
-        "transfers": xfer_future.result(),
-        "meds": med_future.result(),
-    }
+def _cached_admission_data(ds, hadm, _lab_ref, _xfer_ref, _rx_ref):
+    return fetch_admission_data(
+        hadm,
+        noteevents_ref,
+        _lab_ref,
+        _xfer_ref,
+        _rx_ref,
+        note_cols=note_cols,
+        lab_cols=lab_cols,
+        xfer_cols=xfer_cols,
+        rx_cols=rx_cols,
+    )
 
 
-data = admission_data(dataset.name, hadm_id, labevents_ref, transfers_ref, prescriptions_ref)
+data = _cached_admission_data(
+    dataset.name, hadm_id, labevents_ref, transfers_ref, prescriptions_ref
+)
 df_notes = data["notes"]
 df_labs = data["labs"]
 df_transfers = data["transfers"]
@@ -579,19 +472,10 @@ if selected_label:
     selected_row_id = selected_label.split(" | ")[0]
 
     @st.cache_data(show_spinner="Fetching note text...")
-    def fetch_note_text(ds, rid):
-        conn = get_connection()
-        result = conn.execute(
-            f"""
-            SELECT "{text_col}"
-            FROM {noteevents_ref}
-            WHERE CAST("{row_id_col}" AS VARCHAR) = $1
-        """,
-            [rid],
-        ).fetchone()
-        return result[0] if result else None
+    def _cached_note_text(ds, rid):
+        return fetch_note_text(noteevents_ref, rid, text_col, row_id_col)
 
-    text = fetch_note_text(dataset.name, selected_row_id)
+    text = _cached_note_text(dataset.name, selected_row_id)
     if text:
         st.text_area("Note content", value=text, height=400, disabled=True)
     else:
