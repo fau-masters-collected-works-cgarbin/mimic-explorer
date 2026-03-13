@@ -1,6 +1,7 @@
-"""Temporal Note Timeline -- how clinical notes distribute across a hospital stay."""
+"""Clinical Timeline -- notes and structured events across a hospital stay."""
 
 import random
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import plotly.express as px
@@ -10,14 +11,20 @@ import streamlit as st
 from mimic_explorer.config import DATASETS
 from mimic_explorer.db import get_connection, note_union_ref, resolve_refs
 
-st.title("Temporal Note Timeline")
+st.title("Clinical Timeline")
 
 dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
+
+# Clear stale HADM_ID when the user switches datasets
+if st.session_state.get("_timeline_dataset") != st.session_state["dataset_key"]:
+    st.session_state["_timeline_dataset"] = st.session_state["dataset_key"]
+    st.session_state.pop("hadm_id_for_timeline", None)
+
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
-refs = resolve_refs(tables, ["noteevents", "admissions"])
+refs = resolve_refs(tables, ["noteevents", "admissions", "labevents", "transfers", "prescriptions"])
 admissions_ref = refs["admissions"]
 
 if is_mimic3:
@@ -44,7 +51,9 @@ if not admissions_ref:
     st.error("Could not find ADMISSIONS table in this dataset.")
     st.stop()
 
-# Column name mappings
+# Column name mappings -- MIMIC-III uses UPPERCASE, MIMIC-IV uses lowercase.
+# Notes and admissions columns used directly throughout the page.
+# Structured event columns grouped by table for use in per-admission queries.
 if is_mimic3:
     category_col = "CATEGORY"
     chartdate_col = "CHARTDATE"
@@ -56,6 +65,26 @@ if is_mimic3:
     text_col = "TEXT"
     admit_col = "ADMITTIME"
     disch_col = "DISCHTIME"
+    lab_cols = {
+        "charttime": "CHARTTIME",
+        "flag": "FLAG",
+        "itemid": "ITEMID",
+        "hadm": "HADM_ID",
+        "value": "VALUE",
+        "valueuom": "VALUEUOM",
+    }
+    xfer_cols = {
+        "intime": "INTIME",
+        "eventtype": "EVENTTYPE",
+        "careunit": "CURR_CAREUNIT",
+        "hadm": "HADM_ID",
+    }
+    rx_cols = {
+        "starttime": "STARTDATE",
+        "stoptime": "ENDDATE",
+        "drug": "DRUG",
+        "hadm": "HADM_ID",
+    }
 else:
     # MIMIC-IV-Note: category is synthetic from UNION, no chartdate, no ISERROR
     category_col = "category"
@@ -68,11 +97,31 @@ else:
     text_col = "text"
     admit_col = "admittime"
     disch_col = "dischtime"
+    lab_cols = {
+        "charttime": "charttime",
+        "flag": "flag",
+        "itemid": "itemid",
+        "hadm": "hadm_id",
+        "value": "value",
+        "valueuom": "valueuom",
+    }
+    xfer_cols = {
+        "intime": "intime",
+        "eventtype": "eventtype",
+        "careunit": "careunit",
+        "hadm": "hadm_id",
+    }
+    rx_cols = {
+        "starttime": "starttime",
+        "stoptime": "stoptime",
+        "drug": "drug",
+        "hadm": "hadm_id",
+    }
 
 st.markdown(
-    "How clinical notes distribute across a hospital stay: "
-    "where documentation clusters, where gaps appear, and what "
-    "the temporal rhythm of clinical documentation looks like."
+    "Clinical notes and structured events across a hospital stay: "
+    "where documentation clusters, where gaps appear, and how notes "
+    "relate to lab results, unit transfers, and medication changes."
 )
 
 # Error filter used in multiple queries
@@ -98,7 +147,6 @@ def category_counts(ds):
 
 
 df_cats = category_counts(dataset.name)
-total_notes = int(df_cats["count"].sum())
 
 fig = px.bar(
     df_cats,
@@ -187,11 +235,14 @@ if not bounds:
     st.stop()
 
 
-# ── Fetch notes metadata (no TEXT column) ──
+# ── Fetch notes and structured events in parallel ──
+
+labevents_ref = refs["labevents"]
+transfers_ref = refs["transfers"]
+prescriptions_ref = refs["prescriptions"]
 
 
-@st.cache_data(show_spinner="Loading notes for this admission (first run may take ~10s)...")
-def admission_notes(ds, hadm):
+def _fetch_notes(hadm):
     conn = get_connection()
     cols = [
         f'"{row_id_col}"',
@@ -220,7 +271,87 @@ def admission_notes(ds, hadm):
     ).fetchdf()
 
 
-df_notes = admission_notes(dataset.name, hadm_id)
+def _fetch_abnormal_labs(hadm, ref):
+    if ref is None:
+        return pd.DataFrame()
+    c = lab_cols
+    conn = get_connection()
+    return conn.execute(
+        f"""
+        SELECT "{c["charttime"]}"::TIMESTAMP AS timestamp,
+               "{c["value"]}" AS value,
+               "{c["valueuom"]}" AS unit,
+               "{c["flag"]}" AS flag,
+               CAST("{c["itemid"]}" AS VARCHAR) AS itemid
+        FROM {ref}
+        WHERE "{c["hadm"]}" = $1
+          AND "{c["flag"]}" IS NOT NULL AND "{c["flag"]}" != ''
+          AND "{c["charttime"]}" IS NOT NULL
+        ORDER BY "{c["charttime"]}"
+    """,
+        [hadm],
+    ).fetchdf()
+
+
+def _fetch_transfers(hadm, ref):
+    if ref is None:
+        return pd.DataFrame()
+    c = xfer_cols
+    conn = get_connection()
+    return conn.execute(
+        f"""
+        SELECT "{c["intime"]}"::TIMESTAMP AS timestamp,
+               "{c["eventtype"]}" AS eventtype,
+               "{c["careunit"]}" AS careunit
+        FROM {ref}
+        WHERE "{c["hadm"]}" = $1
+          AND "{c["intime"]}" IS NOT NULL
+        ORDER BY "{c["intime"]}"
+    """,
+        [hadm],
+    ).fetchdf()
+
+
+def _fetch_meds(hadm, ref):
+    if ref is None:
+        return pd.DataFrame()
+    c = rx_cols
+    conn = get_connection()
+    return conn.execute(
+        f"""
+        SELECT "{c["starttime"]}"::TIMESTAMP AS start_time,
+               "{c["stoptime"]}"::TIMESTAMP AS stop_time,
+               "{c["drug"]}" AS drug
+        FROM {ref}
+        WHERE "{c["hadm"]}" = $1
+          AND "{c["starttime"]}" IS NOT NULL
+        ORDER BY "{c["starttime"]}"
+    """,
+        [hadm],
+    ).fetchdf()
+
+
+@st.cache_data(show_spinner="Loading admission data (first run may take ~10s)...")
+def admission_data(ds, hadm, _lab_ref, _xfer_ref, _rx_ref):
+    """Fetch notes and structured events in parallel (each thread gets its own connection)."""
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        notes_future = pool.submit(_fetch_notes, hadm)
+        lab_future = pool.submit(_fetch_abnormal_labs, hadm, _lab_ref)
+        xfer_future = pool.submit(_fetch_transfers, hadm, _xfer_ref)
+        med_future = pool.submit(_fetch_meds, hadm, _rx_ref)
+    return {
+        "notes": notes_future.result(),
+        "labs": lab_future.result(),
+        "transfers": xfer_future.result(),
+        "meds": med_future.result(),
+    }
+
+
+data = admission_data(dataset.name, hadm_id, labevents_ref, transfers_ref, prescriptions_ref)
+df_notes = data["notes"]
+df_labs = data["labs"]
+df_transfers = data["transfers"]
+df_meds = data["meds"]
 
 if df_notes.empty:
     st.warning(f"No notes found for HADM_ID = {hadm_id}.")
@@ -255,36 +386,16 @@ st.markdown(
     f"({los_hours / 24:.1f} days). **{len(df_notes)} notes.**"
 )
 
-# For MIMIC-IV, show structured event counts to contextualize the sparse notes
-if not is_mimic3:
-    event_refs = resolve_refs(tables, ["chartevents", "labevents", "emar"])
-
-    @st.cache_data(show_spinner="Counting structured events...")
-    def event_counts(ds, hadm, _chart_ref, _lab_ref, _emar_ref):
-        conn = get_connection()
-        counts = {}
-        for label, ref in [
-            ("charted observations", _chart_ref),
-            ("lab results", _lab_ref),
-            ("medication administrations", _emar_ref),
-        ]:
-            if ref is None:
-                continue
-            n = conn.execute(f'SELECT COUNT(*) FROM {ref} WHERE "hadm_id" = {hadm}').fetchone()[0]
-            if n > 0:
-                counts[label] = n
-        return counts
-
-    counts = event_counts(
-        dataset.name,
-        hadm_id,
-        event_refs["chartevents"],
-        event_refs["labevents"],
-        event_refs["emar"],
-    )
-    if counts:
-        parts = [f"{v:,} {k}" for k, v in counts.items()]
-        st.caption(f"This admission also has {', '.join(parts)}.")
+# Build event summary line
+event_parts = []
+if not df_labs.empty:
+    event_parts.append(f"{len(df_labs)} abnormal labs")
+if not df_transfers.empty:
+    event_parts.append(f"{len(df_transfers)} transfers")
+if not df_meds.empty:
+    event_parts.append(f"{len(df_meds)} medication orders")
+if event_parts:
+    st.caption(f"Structured events: {', '.join(event_parts)}.")
 
 # ── Timeline scatter plot ──
 
@@ -319,45 +430,124 @@ fig = px.scatter(
     labels={"hours_from_admit": "Hours from Admission", "timeline_label": ""},
 )
 
+# Overlay structured clinical events on the timeline
+if not df_labs.empty:
+    lab_hours = (pd.to_datetime(df_labs["timestamp"]) - admit_ts).dt.total_seconds() / 3600
+    fig.add_trace(
+        go.Scatter(
+            x=lab_hours,
+            y=["Abnormal lab"] * len(lab_hours),
+            mode="markers",
+            marker={"symbol": "triangle-up", "size": 7, "color": "#d62728"},
+            name="Abnormal lab",
+            hovertext=(
+                df_labs["flag"].astype(str)
+                + ": "
+                + df_labs["value"].astype(str)
+                + " "
+                + df_labs["unit"].fillna("").astype(str)
+            ),
+            hoverinfo="text+x",
+        )
+    )
+
+if not df_transfers.empty:
+    xfer_hours = (pd.to_datetime(df_transfers["timestamp"]) - admit_ts).dt.total_seconds() / 3600
+    xfer_labels = (
+        df_transfers["eventtype"].fillna("") + " \u2192 " + df_transfers["careunit"].fillna("")
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=xfer_hours,
+            y=["Transfer"] * len(xfer_hours),
+            mode="markers",
+            marker={"symbol": "square", "size": 9, "color": "#2ca02c"},
+            name="Transfer",
+            hovertext=xfer_labels,
+            hoverinfo="text+x",
+        )
+    )
+
+if not df_meds.empty:
+    med_hours = (pd.to_datetime(df_meds["start_time"]) - admit_ts).dt.total_seconds() / 3600
+    fig.add_trace(
+        go.Scatter(
+            x=med_hours,
+            y=["Medication start"] * len(med_hours),
+            mode="markers",
+            marker={"symbol": "diamond", "size": 7, "color": "#9467bd"},
+            name="Medication start",
+            hovertext=df_meds["drug"],
+            hoverinfo="text+x",
+        )
+    )
+
 fig.add_vline(x=0, line_dash="dash", line_color="green", annotation_text="Admit")
 fig.add_vline(x=los_hours, line_dash="dash", line_color="red", annotation_text="Discharge")
 
+# Count all unique y-axis labels including event rows
+n_rows = df_notes["timeline_label"].nunique()
+if not df_labs.empty:
+    n_rows += 1
+if not df_transfers.empty:
+    n_rows += 1
+if not df_meds.empty:
+    n_rows += 1
+
 fig.update_layout(
-    height=max(250, 40 * df_notes["timeline_label"].nunique()),
+    height=max(250, 40 * n_rows),
     showlegend=True,
     legend_title_text="",
     xaxis_title="Hours from Admission",
 )
-# Hide color legend entries (redundant with y-axis), keep only symbol entries
+# Hide color legend entries for note categories (redundant with y-axis),
+# keep symbol entries and structured event entries
 for trace in fig.data:
-    if trace.marker.symbol in (None, "circle"):
+    if hasattr(trace, "marker") and trace.marker.symbol in (None, "circle"):
         trace.showlegend = False
 st.plotly_chart(fig, width="stretch")
-st.caption(
+caption_parts = [
     "Notes with date-only timestamps (diamonds) are placed at midnight, "
-    "which can make same-day notes appear before the recorded admission time."
+    "which can make same-day notes appear before the recorded admission time.",
+    "Structured events (labs, transfers, medications) are shown as distinct marker types.",
+]
+if is_mimic3:
+    caption_parts.append(
+        "MIMIC-III medication times are date-only (no time of day), "
+        "so medication markers also appear at midnight."
+    )
+st.caption(" ".join(caption_parts))
+
+# ── Section 3: Note Documentation Patterns ──
+
+st.subheader("Note Documentation Patterns")
+st.caption(
+    "How notes are distributed over the stay and where documentation gaps occur. "
+    "Structured events are not included here -- see the timeline above for the full picture."
 )
 
-# ── Section 3: Temporal Density and Intervals ──
-
-st.subheader("Temporal Density")
-
-col_hist, col_intervals = st.columns(2)
-
-with col_hist:
-    st.markdown("**Notes per 6-hour block**")
-    fig_hist = px.histogram(
-        df_notes,
-        x="hours_from_admit",
-        nbins=max(4, int(los_hours / 6)),
-        labels={"hours_from_admit": "Hours from Admission", "count": "Notes"},
+if len(df_notes) < 3:
+    st.caption(
+        f"Too few notes for temporal density analysis ({len(df_notes)} note"
+        f"{'s' if len(df_notes) != 1 else ''} in this admission). "
+        "See the timeline above for the full picture of clinical activity."
     )
-    fig_hist.update_layout(height=300)
-    st.plotly_chart(fig_hist, width="stretch")
+else:
+    col_hist, col_intervals = st.columns(2)
 
-with col_intervals:
-    st.markdown("**Note-to-note intervals**")
-    if len(df_notes) >= 2:
+    with col_hist:
+        st.markdown("**Notes per 6-hour block**")
+        fig_hist = px.histogram(
+            df_notes,
+            x="hours_from_admit",
+            nbins=max(4, int(los_hours / 6)),
+            labels={"hours_from_admit": "Hours from Admission", "count": "Notes"},
+        )
+        fig_hist.update_layout(height=300)
+        st.plotly_chart(fig_hist, width="stretch")
+
+    with col_intervals:
+        st.markdown("**Note-to-note intervals**")
         sorted_notes = df_notes.sort_values("timestamp")
         intervals = sorted_notes["timestamp"].diff().dt.total_seconds() / 3600
         intervals = intervals.dropna()
@@ -398,8 +588,6 @@ with col_intervals:
             "Tall bars indicate documentation gaps; short bars indicate bursts of activity. "
             "Gaps above the 12h line often align with overnight periods or weekends."
         )
-    else:
-        st.caption("Need at least 2 notes to compute intervals.")
 
 # ── Section 4: Note Text Viewer ──
 

@@ -2,7 +2,7 @@
 
 Explore MIMIC-III and MIMIC-IV clinical datasets interactively. Reads CSV.gz files directly with DuckDB -- no ETL, no database setup.
 
-<img src="docs/images/temporal-note-timeline.jpg" width="700" alt="Temporal note timeline showing per-admission note distribution with category breakdown and documentation gaps">
+<img src="docs/images/temporal-note-timeline.jpg" width="700" alt="Clinical timeline showing notes, abnormal labs, transfers, and medications across a hospital stay">
 
 ## Getting started
 
@@ -21,7 +21,7 @@ By default the app looks for datasets at:
 - MIMIC-IV: `~/projects/mimic-iv/physionet.org/files/mimiciv/3.1`
 - MIMIC-IV-Note: `~/projects/mimic-iv-note/physionet.org/files/mimic-iv-note/2.2/note`
 
-MIMIC-IV-Note is a separate PhysioNet module containing clinical notes for MIMIC-IV (discharge summaries and radiology reports). Download it from [PhysioNet](https://physionet.org/content/mimic-iv-note/) after credentialing. The note timeline page uses this module when working with MIMIC-IV.
+MIMIC-IV-Note is a separate PhysioNet module containing clinical notes for MIMIC-IV (discharge summaries and radiology reports). Download it from [PhysioNet](https://physionet.org/content/mimic-iv-note/) after credentialing. The Clinical Timeline page uses this module for notes when working with MIMIC-IV.
 
 To use different paths, set environment variables before launching:
 
@@ -54,7 +54,7 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 
 **Clinical Insights** shows a profile of the patient population: top diagnoses, procedures, and lab tests; demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding who is in the dataset before designing cohort filters.
 
-**Temporal Note Timeline** explores clinical notes across hospital stays (uses NOTEEVENTS for MIMIC-III, or the separate MIMIC-IV-Note module for MIMIC-IV). It shows a category overview of note types, a per-admission timeline of when notes were written, temporal density patterns, note-to-note interval distributions, and a note text viewer. This page is most relevant for researchers working with clinical text.
+**Clinical Timeline** shows what happened during a hospital stay and when: clinical notes, abnormal lab results, unit transfers, and medication changes plotted on a single timeline. It also includes note category distributions, temporal density patterns, documentation gap analysis, and a note text viewer. Uses NOTEEVENTS for MIMIC-III and the separate MIMIC-IV-Note module for MIMIC-IV; structured events (labs, transfers, medications) are available for both versions.
 
 **Community References** collects links to official documentation, tutorial notebooks, the mimic-code repository, and other community resources.
 

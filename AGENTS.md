@@ -12,7 +12,7 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 - `pages/dataset_at_a_glance.py` -- Key dataset metrics and contextual explanations for newcomers. UI only, uses db and config.
 - `pages/database_schema.py` -- Join key hierarchy, tables grouped by connectivity with column details in expanders, join patterns. UI only, uses db and config.
 - `pages/clinical_insights.py` -- Distributions: top diagnoses/procedures/labs, demographics, LOS. UI only, uses db.
-- `pages/note_timeline.py` -- Temporal note distribution across hospital stays. Category overview, per-admission timeline with structured event context (MIMIC-IV), temporal density, note-to-note intervals, note text viewer. UI only, uses db and config. MIMIC-III uses NOTEEVENTS; MIMIC-IV uses MIMIC-IV-Note module (discharge + radiology tables UNIONed with synthetic category column).
+- `pages/note_timeline.py` -- Clinical timeline across hospital stays. Shows notes alongside structured clinical events (abnormal labs, unit transfers, medication starts/stops) on a unified timeline. Also includes note category overview, temporal density, note-to-note intervals, note text viewer. UI only, uses db and config. MIMIC-III uses NOTEEVENTS + LABEVENTS/TRANSFERS/PRESCRIPTIONS; MIMIC-IV uses MIMIC-IV-Note module + hosp tables (labevents/transfers/prescriptions).
 - `pages/community_references.py` -- Links to external MIMIC resources. Static content, no data queries.
 
 ## MIMIC schema reference
