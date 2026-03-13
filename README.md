@@ -2,6 +2,8 @@
 
 Interactive Streamlit app for exploring MIMIC-III and MIMIC-IV clinical datasets. Reads CSV.gz files directly with DuckDB -- no ETL, no database setup.
 
+<img src="docs/images/temporal-note-timeline.jpg" width="700" alt="Temporal note timeline showing per-admission note distribution with category breakdown and documentation gaps">
+
 ## Getting started
 
 You need local copies of the MIMIC CSV.gz files (downloaded from PhysioNet after credentialing).
@@ -36,7 +38,19 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 
 **Dataset at a Glance** gives you the key numbers: patient count, admissions, ICU stays, mortality rate, and median length of stay. Each metric includes a plain-language explanation of what it means clinically. Start here to get oriented.
 
+<details>
+<summary>Screenshot</summary>
+
+<img src="docs/images/dataset-at-a-glance.jpg" width="700" alt="Dataset at a Glance showing key metrics for MIMIC-III">
+</details>
+
 **Database Schema** shows how tables relate to each other through the `subject_id` / `hadm_id` / `icustay_id` join key hierarchy. Tables are grouped by connectivity, each expandable to show column details. Ready-to-use join patterns are included so you can start writing queries against the tables you care about.
+
+<details>
+<summary>Screenshot</summary>
+
+<img src="docs/images/database-schema.jpg" width="700" alt="Database schema showing join key hierarchy and table relationships">
+</details>
 
 **Clinical Insights** shows distributions across the dataset: top diagnoses, procedures, and lab tests; patient demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding the patient population before designing cohort filters.
 
