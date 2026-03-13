@@ -54,7 +54,7 @@ Switch between MIMIC-III and MIMIC-IV at any time using the dataset selector in 
 
 **Clinical Insights** shows a profile of the patient population: top diagnoses, procedures, and lab tests; demographics (age, gender, ethnicity); and length-of-stay patterns. Useful for understanding who is in the dataset before designing cohort filters.
 
-**Clinical Timeline** shows what happened during a hospital stay and when: clinical notes, abnormal lab results, unit transfers, and medication changes plotted on a single timeline. It also includes note category distributions, temporal density patterns, documentation gap analysis, and a note text viewer. Uses NOTEEVENTS for MIMIC-III and the separate MIMIC-IV-Note module for MIMIC-IV; structured events (labs, transfers, medications) are available for both versions.
+**Clinical Timeline** shows what happened during a hospital stay and when: clinical notes, abnormal lab results, unit transfers, and medication changes plotted on a single timeline. It also includes note category distributions, note documentation patterns (density and gap analysis), and a note text viewer. Uses NOTEEVENTS for MIMIC-III and the separate MIMIC-IV-Note module for MIMIC-IV; structured events (labs, transfers, medications) are available for both versions.
 
 **Community References** collects links to official documentation, tutorial notebooks, the mimic-code repository, and other community resources.
 
