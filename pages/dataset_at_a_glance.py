@@ -10,7 +10,6 @@ st.title("Dataset at a Glance")
 dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
 tables = dataset.find_tables()
-is_mimic3 = dataset.uppercase_filenames
 
 # Key table paths
 patients_path = tables.get("patients")
@@ -31,10 +30,10 @@ def compute_overview(
     patients_path: str,  # str (not Path) because st.cache_data needs hashable args
     admissions_path: str,
     icustays_path: str | None,
-    *,
-    uppercase: bool,
+    cols: tuple[str, ...],
 ):
     """Compute all overview metrics in one pass per table."""
+    gender_col, admit_col, disch_col, death_col, los_col = cols
     conn = get_connection()
     p = table_ref(patients_path)
     a = table_ref(admissions_path)
@@ -43,7 +42,6 @@ def compute_overview(
     total_admissions = scalar_query(conn, f"SELECT count(*) FROM {a}")
 
     # Gender split
-    gender_col = "GENDER" if uppercase else "gender"
     male_pct = scalar_query(
         conn,
         f"SELECT round(100.0 * count(*) FILTER "
@@ -51,19 +49,16 @@ def compute_overview(
     )
 
     # Admission date range
-    admit_col = "ADMITTIME" if uppercase else "admittime"
     min_admit = scalar_query(conn, f'SELECT min("{admit_col}")::DATE FROM {a}')
     max_admit = scalar_query(conn, f'SELECT max("{admit_col}")::DATE FROM {a}')
 
     # Hospital mortality rate
-    death_col = "HOSPITAL_EXPIRE_FLAG" if uppercase else "hospital_expire_flag"
     mortality_pct = scalar_query(
         conn,
         f'SELECT round(100.0 * avg("{death_col}"), 1) FROM {a}',
     )
 
     # Median hospital length of stay (days)
-    disch_col = "DISCHTIME" if uppercase else "dischtime"
     median_los = scalar_query(
         conn,
         f"""SELECT round(median(
@@ -77,7 +72,6 @@ def compute_overview(
     if icustays_path:
         i = table_ref(icustays_path)
         total_icu_stays = scalar_query(conn, f"SELECT count(*) FROM {i}")
-        los_col = "LOS" if uppercase else "los"
         median_icu_los = scalar_query(conn, f'SELECT round(median("{los_col}"), 1) FROM {i}')
 
     return {
@@ -98,7 +92,13 @@ metrics = compute_overview(
     str(patients_path),
     str(admissions_path),
     str(icustays_path) if icustays_path else None,
-    uppercase=is_mimic3,
+    (
+        dataset.col("gender"),
+        dataset.col("admittime"),
+        dataset.col("dischtime"),
+        dataset.col("hospital_expire_flag"),
+        dataset.col("los"),
+    ),
 )
 
 # -- Display --

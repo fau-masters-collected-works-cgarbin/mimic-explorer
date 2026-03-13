@@ -42,27 +42,20 @@ d_proc_ref = refs["d_icd_procedures"]
 d_lab_ref = refs["d_labitems"]
 labevents_ref = refs["labevents"]
 
-# Column name mappings
-if is_mimic3:
-    icd_col = "ICD9_CODE"
-    icd_join = f'd."{icd_col}" = t."{icd_col}"'
-    title_col = "LONG_TITLE"
-    gender_col = "GENDER"
-    admit_col = "ADMITTIME"
-    disch_col = "DISCHTIME"
-    race_col = "ETHNICITY"
-    itemid_col = "ITEMID"
-    label_col = "LABEL"
-else:
-    icd_col = "icd_code"
-    icd_join = f'd."{icd_col}" = t."{icd_col}" AND d."icd_version" = t."icd_version"'
-    title_col = "long_title"
-    gender_col = "gender"
-    admit_col = "admittime"
-    disch_col = "dischtime"
-    race_col = "race"
-    itemid_col = "itemid"
-    label_col = "label"
+# Column names
+icd_col = dataset.col("icd_code")
+title_col = dataset.col("long_title")
+gender_col = dataset.col("gender")
+admit_col = dataset.col("admittime")
+disch_col = dataset.col("dischtime")
+race_col = dataset.col("race")
+itemid_col = dataset.col("itemid")
+label_col = dataset.col("label")
+
+# MIMIC-IV has both ICD-9 and ICD-10; joins need the version qualifier
+icd_join = f'd."{icd_col}" = t."{icd_col}"'
+if not is_mimic3:
+    icd_join += ' AND d."icd_version" = t."icd_version"'
 
 
 # -- Top diagnoses --
