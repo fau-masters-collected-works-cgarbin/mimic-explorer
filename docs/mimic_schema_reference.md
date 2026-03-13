@@ -1,6 +1,9 @@
 # MIMIC Schema Reference
 
-Verified against local CSV.gz files. Use this instead of looking up columns at runtime when writing version-aware code.
+Verified against: MIMIC-III v1.4, MIMIC-IV v3.1, MIMIC-IV-Note v2.2.
+If you upgrade MIMIC versions, run `uv run pytest tests/test_schema_reference.py -v` to check for drift.
+
+Use this instead of looking up columns at runtime when writing version-aware code.
 
 ## Version differences
 

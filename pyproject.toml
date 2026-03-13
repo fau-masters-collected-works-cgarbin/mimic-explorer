@@ -68,6 +68,10 @@ docstring-code-format = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = "-m 'not schema'"
+markers = [
+    "schema: validates schema reference against local MIMIC CSV.gz files (requires data)",
+]
 
 [tool.coverage.run]
 branch = true
