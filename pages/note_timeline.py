@@ -131,7 +131,10 @@ fig = px.bar(
     orientation="h",
     labels={"count": "Notes", "category": ""},
 )
-fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=400)
+bar_height = min(max(len(df_cats) * 30, 120), 400)
+fig.update_layout(
+    yaxis={"categoryorder": "total ascending"}, height=bar_height, margin={"t": 10, "b": 10}
+)
 st.plotly_chart(fig, width="stretch")
 
 # ── Section 2: Admission Selector ──
