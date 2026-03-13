@@ -228,7 +228,6 @@ render_table_group(
 
 # -- Common join patterns --
 
-st.divider()
 st.subheader("Common join patterns")
 
 st.markdown(f"""

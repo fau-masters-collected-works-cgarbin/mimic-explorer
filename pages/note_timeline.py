@@ -109,11 +109,9 @@ fig = px.bar(
 )
 fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=400)
 st.plotly_chart(fig, width="stretch")
-st.caption(f"{total_notes:,} total notes across {len(df_cats)} categories.")
 
 # ── Section 2: Admission Selector ──
 
-st.divider()
 st.subheader("Admission Timeline")
 
 hadm_id_input = st.sidebar.text_input(
@@ -342,7 +340,6 @@ st.caption(
 
 # ── Section 3: Temporal Density and Intervals ──
 
-st.divider()
 st.subheader("Temporal Density")
 
 col_hist, col_intervals = st.columns(2)
@@ -406,7 +403,6 @@ with col_intervals:
 
 # ── Section 4: Note Text Viewer ──
 
-st.divider()
 st.subheader("Note Text")
 
 # Build a display label for each note

@@ -69,7 +69,6 @@ else:
 
 if diagnoses_ref and d_diag_ref:
     st.subheader("Top 20 Diagnoses")
-    st.caption("Most frequently assigned diagnosis codes across all admissions.")
 
     @st.cache_data(show_spinner="Querying diagnoses...")
     def top_diagnoses(ds, diag_ref, d_ref, join_clause, col):
@@ -98,7 +97,6 @@ if diagnoses_ref and d_diag_ref:
 
 if procedures_ref and d_proc_ref:
     st.subheader("Top 20 Procedures")
-    st.caption("Most frequently recorded procedure codes across all admissions.")
 
     @st.cache_data(show_spinner="Querying procedures...")
     def top_procedures(ds, proc_ref, d_ref, join_clause, col):
@@ -126,11 +124,7 @@ if procedures_ref and d_proc_ref:
 # -- Top lab tests --
 
 if labevents_ref and d_lab_ref:
-    st.subheader("Top 20 Lab Tests")
-    st.caption(
-        "Most frequently ordered lab tests. Based on a sample of the first "
-        "1 million rows (labevents is very large)."
-    )
+    st.subheader("Top 20 Lab Tests (sampled)")
 
     @st.cache_data(show_spinner="Sampling lab events (this may take a moment)...")
     def top_labs(ds, lab_ref, dlab_ref, item_col, lbl_col):
@@ -174,9 +168,8 @@ if patients_ref and admissions_ref:
         """).fetchdf()
 
     with col1:
-        st.markdown("**Gender distribution** (patient level)")
         df_gender = gender_dist(dataset.name, patients_ref, gender_col)
-        fig = px.pie(df_gender, values="count", names="gender")
+        fig = px.pie(df_gender, values="count", names="gender", title="Gender (patient level)")
         fig.update_layout(height=300)
         st.plotly_chart(fig, width="stretch")
 
@@ -193,14 +186,15 @@ if patients_ref and admissions_ref:
         """).fetchdf()
 
     with col2:
-        st.markdown("**Race/ethnicity distribution** (admission level, top 15)")
         df_race = race_dist(dataset.name, admissions_ref, race_col)
-        fig = px.pie(df_race, values="count", names="race")
+        fig = px.pie(
+            df_race,
+            values="count",
+            names="race",
+            title="Race/ethnicity (admission level, top 15)",
+        )
         fig.update_layout(height=300)
         st.plotly_chart(fig, width="stretch")
-
-    # Age distribution
-    st.markdown("**Age distribution at admission**")
 
     @st.cache_data(show_spinner="Computing age distribution...")
     def age_dist(ds, pat_ref, adm_ref, uppercase):
@@ -229,6 +223,7 @@ if patients_ref and admissions_ref:
         df_age,
         x="age",
         nbins=40,
+        title="Age distribution at admission",
         labels={"age": "Age (years)", "count": "Count"},
     )
     fig.update_layout(height=350)
