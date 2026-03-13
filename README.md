@@ -2,7 +2,7 @@
 
 Explore MIMIC-III and MIMIC-IV clinical datasets interactively. Reads CSV.gz files directly with DuckDB -- no ETL, no database setup.
 
-<img src="docs/images/temporal-note-timeline.jpg" width="700" alt="Clinical timeline showing notes, abnormal labs, transfers, and medications across a hospital stay">
+<img src="docs/images/admission-timeline.jpg" width="700" alt="Clinical timeline showing notes, abnormal labs, transfers, and medications across a hospital stay">
 
 ## Getting started
 
