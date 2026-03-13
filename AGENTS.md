@@ -55,6 +55,12 @@ uv run pytest tests/ -v
 
 Run tests after every change to `config.py` or `db.py`.
 
+Schema validation tests (require local MIMIC data, excluded from default runs):
+
+```bash
+uv run pytest tests/test_schema_reference.py -m schema -v
+```
+
 ## Linting and formatting
 
 ```bash
