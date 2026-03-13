@@ -251,6 +251,37 @@ st.markdown(
     f"({los_hours / 24:.1f} days). **{len(df_notes)} notes.**"
 )
 
+# For MIMIC-IV, show structured event counts to contextualize the sparse notes
+if not is_mimic3:
+    event_refs = resolve_refs(tables, ["chartevents", "labevents", "emar"])
+
+    @st.cache_data(show_spinner="Counting structured events...")
+    def event_counts(ds, hadm, _chart_ref, _lab_ref, _emar_ref):
+        conn = get_connection()
+        counts = {}
+        for label, ref in [
+            ("charted observations", _chart_ref),
+            ("lab results", _lab_ref),
+            ("medication administrations", _emar_ref),
+        ]:
+            if ref is None:
+                continue
+            n = conn.execute(f'SELECT COUNT(*) FROM {ref} WHERE "hadm_id" = {hadm}').fetchone()[0]
+            if n > 0:
+                counts[label] = n
+        return counts
+
+    counts = event_counts(
+        dataset.name,
+        hadm_id,
+        event_refs["chartevents"],
+        event_refs["labevents"],
+        event_refs["emar"],
+    )
+    if counts:
+        parts = [f"{v:,} {k}" for k, v in counts.items()]
+        st.caption(f"This admission also has {', '.join(parts)}.")
+
 # ── Timeline scatter plot ──
 
 # Build a detailed y-axis label: "Category / Description" when description adds info
@@ -288,7 +319,7 @@ fig.add_vline(x=0, line_dash="dash", line_color="green", annotation_text="Admit"
 fig.add_vline(x=los_hours, line_dash="dash", line_color="red", annotation_text="Discharge")
 
 fig.update_layout(
-    height=max(250, 80 * df_notes["timeline_label"].nunique()),
+    height=max(250, 40 * df_notes["timeline_label"].nunique()),
     showlegend=True,
     legend_title_text="",
     xaxis_title="Hours from Admission",
