@@ -170,11 +170,14 @@ except ValueError:
 @st.cache_data(show_spinner="Fetching admission times...")
 def admission_bounds(ds, hadm):
     conn = get_connection()
-    result = conn.execute(f"""
+    result = conn.execute(
+        f"""
         SELECT "{admit_col}"::TIMESTAMP AS admit, "{disch_col}"::TIMESTAMP AS disch
         FROM {admissions_ref}
-        WHERE "{hadm_col}" = {hadm}
-    """).fetchone()
+        WHERE "{hadm_col}" = $1
+    """,
+        [hadm],
+    ).fetchone()
     if not result:
         return None
     return {"admit": result[0], "disch": result[1]}
@@ -200,7 +203,7 @@ def admission_notes(ds, hadm):
     ]
     if chartdate_col:
         cols.append(f'"{chartdate_col}"')
-    where_parts = [f'"{hadm_col}" = {hadm}']
+    where_parts = [f'"{hadm_col}" = $1']
     if error_filter:
         where_parts.append(error_filter)
     where = "WHERE " + " AND ".join(where_parts)
@@ -208,12 +211,15 @@ def admission_notes(ds, hadm):
         order = f'COALESCE("{charttime_col}"::TIMESTAMP, "{chartdate_col}"::TIMESTAMP)'
     else:
         order = f'"{charttime_col}"::TIMESTAMP'
-    return conn.execute(f"""
+    return conn.execute(
+        f"""
         SELECT {", ".join(cols)}
         FROM {noteevents_ref}
         {where}
         ORDER BY {order}
-    """).fetchdf()
+    """,
+        [hadm],
+    ).fetchdf()
 
 
 df_notes = admission_notes(dataset.name, hadm_id)
@@ -421,11 +427,14 @@ if selected_label:
     @st.cache_data(show_spinner="Fetching note text...")
     def fetch_note_text(ds, rid):
         conn = get_connection()
-        result = conn.execute(f"""
+        result = conn.execute(
+            f"""
             SELECT "{text_col}"
             FROM {noteevents_ref}
-            WHERE CAST("{row_id_col}" AS VARCHAR) = '{rid}'
-        """).fetchone()
+            WHERE CAST("{row_id_col}" AS VARCHAR) = $1
+        """,
+            [rid],
+        ).fetchone()
         return result[0] if result else None
 
     text = fetch_note_text(dataset.name, selected_row_id)

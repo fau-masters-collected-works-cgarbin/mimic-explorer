@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 from mimic_explorer.config import DATASETS, LARGE_TABLES
@@ -194,7 +195,7 @@ def render_table_group(title, description, table_names):
                     st.caption("Large table -- row count skipped")
 
             # Column details
-            st.dataframe(cols, hide_index=True)
+            st.dataframe(pd.DataFrame(cols), hide_index=True)
 
 
 core_tables = [t for t in sorted(CORE_TABLES) if t in schema]

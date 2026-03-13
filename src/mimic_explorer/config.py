@@ -79,6 +79,7 @@ LARGE_TABLES = frozenset(
     {
         "chartevents",
         "labevents",
+        "inputevents",
         "inputevents_cv",
         "inputevents_mv",
         "noteevents",
