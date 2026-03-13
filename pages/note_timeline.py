@@ -166,11 +166,11 @@ hadm_id_input = st.sidebar.text_input(
     "Admission ID (HADM_ID)", value=st.session_state.get("hadm_id_for_timeline", "")
 )
 
-if st.sidebar.button("Random admission", help="Pick a random admission that has notes"):
+if st.sidebar.button("Random admission", help="Pick a random admission with multiple notes"):
 
-    @st.cache_data(show_spinner="Picking random admissions...")
+    @st.cache_data(show_spinner="Finding admissions with multiple notes...")
     def random_hadm_ids(ds):
-        """Cache a batch of random HADM_IDs to avoid repeated full scans."""
+        """Cache admissions with 3+ notes to avoid landing on single-note stays."""
         conn = get_connection()
         where_parts = [f'"{hadm_col}" IS NOT NULL']
         if error_filter:
@@ -179,10 +179,13 @@ if st.sidebar.button("Random admission", help="Pick a random admission that has 
         return [
             row[0]
             for row in conn.execute(f"""
-                SELECT DISTINCT "{hadm_col}"
-                FROM {noteevents_ref}
-                {where}
-                USING SAMPLE 50
+                SELECT "{hadm_col}" FROM (
+                    SELECT "{hadm_col}"
+                    FROM {noteevents_ref}
+                    {where}
+                    GROUP BY "{hadm_col}"
+                    HAVING COUNT(*) >= 3
+                ) USING SAMPLE 50
             """).fetchall()
         ]
 
