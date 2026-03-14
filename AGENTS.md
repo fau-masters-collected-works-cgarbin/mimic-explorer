@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses DuckDB to query CSV.gz files directly (no ETL, no database). Phase 0a of the dissertation execution plan: understand the data before building experiments.
+Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses DuckDB to query CSV.gz files directly (no ETL, no database). The goal is to understand the data before building experiments.
 
 ## Architecture
 
