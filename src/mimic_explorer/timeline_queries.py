@@ -29,8 +29,14 @@ def fetch_category_counts(
 def fetch_random_hadm_ids(
     noteevents_ref: str, hadm_col: str, error_filter: str | None
 ) -> list[int]:
-    """Return up to 50 admission IDs that have 3+ notes."""
+    """Return up to 50 admission IDs that have 3+ notes.
+
+    The 3-note minimum filters out admissions that are too sparse to produce
+    a meaningful timeline. Sampling is done in DuckDB to avoid transferring
+    the full list of qualifying admissions.
+    """
     conn = get_connection()
+    # Some notes have NULL hadm_id (e.g. outpatient notes not linked to an admission)
     where_parts = [f'"{hadm_col}" IS NOT NULL']
     if error_filter:
         where_parts.append(error_filter)
@@ -78,6 +84,12 @@ def _fetch_notes(
     hadm_col: str,
     error_filter: str | None,
 ) -> pd.DataFrame:
+    """Fetch notes for an admission, ordered by charttime with chartdate fallback.
+
+    MIMIC-III notes may have charttime or only chartdate (date without time).
+    When both exist, COALESCE prefers the more precise charttime. MIMIC-IV
+    notes always have charttime, so chartdate_col is None and no fallback is needed.
+    """
     conn = get_connection()
     cols = [
         f'"{row_id_col}"',
@@ -109,7 +121,7 @@ def _fetch_notes(
 def _fetch_abnormal_labs(hadm: int, ref: str | None, lab_cols: dict) -> pd.DataFrame:
     if ref is None:
         return pd.DataFrame()
-    c = lab_cols
+    c = lab_cols  # short alias for use in the SQL template
     conn = get_connection()
     return conn.execute(
         f"""
@@ -120,6 +132,7 @@ def _fetch_abnormal_labs(hadm: int, ref: str | None, lab_cols: dict) -> pd.DataF
                CAST("{c["itemid"]}" AS VARCHAR) AS itemid
         FROM {ref}
         WHERE "{c["hadm"]}" = $1
+          -- flag is empty string (not NULL) for normal results in MIMIC-III
           AND "{c["flag"]}" IS NOT NULL AND "{c["flag"]}" != ''
           AND "{c["charttime"]}" IS NOT NULL
         ORDER BY "{c["charttime"]}"
@@ -178,7 +191,12 @@ def fetch_admission_data(
     xfer_cols: dict,
     rx_cols: dict,
 ) -> dict[str, pd.DataFrame]:
-    """Fetch notes and structured events in parallel (each thread gets its own connection)."""
+    """Fetch notes and structured events for a single admission.
+
+    Returns a dict with keys "notes", "labs", "transfers", "meds", each a DataFrame.
+    Queries run in parallel; each thread creates its own DuckDB connection because
+    DuckDB connections are not thread-safe.
+    """
     with ThreadPoolExecutor(max_workers=4) as pool:
         notes_future = pool.submit(_fetch_notes, hadm, noteevents_ref, **note_cols)
         lab_future = pool.submit(_fetch_abnormal_labs, hadm, lab_ref, lab_cols)
@@ -193,7 +211,11 @@ def fetch_admission_data(
 
 
 def fetch_note_text(noteevents_ref: str, rid: str, text_col: str, row_id_col: str) -> str | None:
-    """Fetch the full text of a single note by its row/note ID."""
+    """Fetch the full text of a single note by its row/note ID.
+
+    The CAST to VARCHAR handles the type mismatch between MIMIC-III (ROW_ID is
+    integer) and MIMIC-IV (note_id is string), so the same query works for both.
+    """
     conn = get_connection()
     result = conn.execute(
         f"""
