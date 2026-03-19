@@ -104,8 +104,11 @@ class DatasetConfig:
     def col(self, name: str) -> str | None:
         """Map a logical column name to the actual column name for this dataset.
 
-        Returns None if the column doesn't exist in this version.
+        Returns None if the column doesn't exist in this version (e.g. MIMIC-III
+        has ISERROR and CHARTDATE on notes, MIMIC-IV does not).
         """
+        # uppercase_filenames is a reliable proxy for MIMIC version: III uses
+        # UPPERCASE.csv.gz, IV uses lowercase.csv.gz
         mapping = _COLUMNS_MIMIC3 if self.uppercase_filenames else _COLUMNS_MIMIC4
         return mapping.get(name)
 
@@ -120,7 +123,7 @@ class DatasetConfig:
                 subdir_path = self.base_path / subdir
                 if subdir_path.exists():
                     for f in sorted(subdir_path.glob("*.csv.gz")):
-                        # .stem strips .gz, need to strip .csv too
+                        # Can't use .stem here: it only strips .gz, leaving "TABLE.csv"
                         name = f.name.removesuffix(".csv.gz").lower()
                         tables[name] = f
         else:

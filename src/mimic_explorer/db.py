@@ -13,7 +13,13 @@ if TYPE_CHECKING:
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
-    """Return a DuckDB in-memory connection."""
+    """Return a fresh DuckDB in-memory connection.
+
+    Each call creates a new connection. This is intentional: DuckDB connections
+    are not thread-safe, so callers in threaded contexts (e.g. timeline_queries)
+    need their own connection. The overhead is negligible since there is no
+    persistent database to open.
+    """
     return duckdb.connect()
 
 
@@ -34,8 +40,9 @@ def row_count(conn: duckdb.DuckDBPyConnection, file_path: Path) -> int:
 def column_info(conn: duckdb.DuckDBPyConnection, file_path: Path) -> list[dict[str, str]]:
     """Get column names and inferred types for a CSV.gz file.
 
-    Uses LIMIT 0 query and reads column metadata from cursor description,
-    since DESCRIBE doesn't work directly with read_csv_auto().
+    Uses a LIMIT 0 query and reads column metadata from the cursor description.
+    DuckDB's DESCRIBE statement doesn't work with read_csv_auto() expressions,
+    so we use this workaround instead.
     """
     cursor = conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT 0")
     return [{"name": col[0], "type": str(col[1])} for col in cursor.description]
@@ -59,7 +66,9 @@ def resolve_refs(tables: dict[str, Path], names: list[str]) -> dict[str, str | N
     return {name: table_ref(tables[name]) if name in tables else None for name in names}
 
 
-# Only the main note tables, not the *_detail variants (different schema)
+# Only the main note tables. The *_detail variants (discharge_detail, etc.)
+# have a different schema (field_name/field_value columns) and can't be
+# UNIONed with the main tables.
 _NOTE_TABLE_LABELS: dict[str, str] = {
     "discharge": "Discharge summary",
     "radiology": "Radiology",
@@ -69,9 +78,11 @@ _NOTE_TABLE_LABELS: dict[str, str] = {
 def note_union_ref(note_tables: dict[str, Path]) -> str | None:
     """Build a UNION ALL SQL fragment for MIMIC-IV-Note tables.
 
-    Each table gets a synthetic ``category`` column with a human-readable label.
-    Returns a parenthesised subquery aliased as ``noteevents``, or ``None``
-    if *note_tables* is empty.
+    MIMIC-IV-Note splits notes into separate tables (discharge, radiology) instead
+    of the single NOTEEVENTS table in MIMIC-III. This function UNIONs them back
+    together with a synthetic ``category`` column so downstream code can treat
+    both versions uniformly. Returns a parenthesised subquery aliased as
+    ``noteevents``, or ``None`` if *note_tables* is empty.
     """
     if not note_tables:
         return None
