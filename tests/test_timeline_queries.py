@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from mimic_explorer.db import table_ref
 from mimic_explorer.timeline_queries import (
+    fetch_admission_bounds,
     fetch_admission_data,
     fetch_category_counts,
     fetch_note_text,
@@ -295,3 +297,35 @@ class TestFetchAdmissionData:
         assert data["meds"].empty
         # Notes still returned
         assert not data["notes"].empty
+
+
+# -- fetch_admission_bounds --
+
+
+@pytest.fixture
+def admissions_csv_gz(tmp_path: Path) -> Path:
+    csv = (
+        "ROW_ID,SUBJECT_ID,HADM_ID,ADMITTIME,DISCHTIME\n"
+        "1,10,100,2150-01-01 08:00:00,2150-01-05 14:00:00\n"
+        "2,20,200,2150-02-10 12:00:00,2150-02-12 09:00:00\n"
+    )
+    path = tmp_path / "ADMISSIONS.csv.gz"
+    with gzip.open(path, "wt") as f:
+        f.write(csv)
+    return path
+
+
+def test_fetch_admission_bounds(admissions_csv_gz):
+    result = fetch_admission_bounds(
+        table_ref(admissions_csv_gz), 100, "HADM_ID", "ADMITTIME", "DISCHTIME"
+    )
+    assert result is not None
+    assert str(result["admit"]) == "2150-01-01 08:00:00"
+    assert str(result["disch"]) == "2150-01-05 14:00:00"
+
+
+def test_fetch_admission_bounds_missing_hadm(admissions_csv_gz):
+    result = fetch_admission_bounds(
+        table_ref(admissions_csv_gz), 999, "HADM_ID", "ADMITTIME", "DISCHTIME"
+    )
+    assert result is None

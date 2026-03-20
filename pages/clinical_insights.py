@@ -62,13 +62,15 @@ if "age_dist" in stats:
     if is_mimic3:
         st.caption(
             "Ages >89 are grouped at 90 due to HIPAA de-identification. "
-            "Age is computed per admission, so patients with multiple "
-            "admissions appear multiple times."
+            "Each bar counts admissions, not unique patients, so a patient "
+            "readmitted at different ages contributes to multiple bars."
         )
     else:
         st.caption(
             "Anchor age is assigned once per patient at a reference year. "
-            "Actual age at a specific admission may differ."
+            "Actual age at a specific admission may differ. "
+            "The distribution skews younger than MIMIC-III because MIMIC-IV "
+            "includes a broader population beyond ICU-only stays."
         )
 
 # -- Length of stay distribution --
@@ -85,10 +87,16 @@ if "los_dist" in stats:
     )
     fig.update_layout(height=300, margin={"t": 30, "b": 30})
     st.plotly_chart(fig, width="stretch")
-    st.caption(
+    los_note = (
         "Capped at 60 days for readability. "
         f"The longest stay in this dataset is {df_los['los_days'].max():.0f} days."
     )
+    if not is_mimic3:
+        los_note += (
+            " The spike near zero reflects ED visits and same-day discharges "
+            "included in MIMIC-IV's broader admission scope."
+        )
+    st.caption(los_note)
 
 # -- Per-admission volume --
 
