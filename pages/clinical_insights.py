@@ -61,9 +61,9 @@ if "age_dist" in stats:
 
     if is_mimic3:
         st.caption(
-            "Ages >89 are grouped at 90 due to HIPAA de-identification. "
-            "Each bar counts admissions, not unique patients, so a patient "
-            "readmitted at different ages contributes to multiple bars."
+            "Age is recalculated at each admission, so a patient admitted "
+            "at 65 and again at 68 appears in both age bins. "
+            "Ages >89 are grouped at 90 due to HIPAA de-identification."
         )
     else:
         st.caption(
