@@ -23,51 +23,6 @@ st.markdown(
     "names, not opaque IDs."
 )
 
-# -- Top diagnoses --
-
-if "top_diagnoses" in stats:
-    st.subheader("Top 20 Diagnoses")
-    df_diag = pd.DataFrame(stats["top_diagnoses"])
-    fig = px.bar(
-        df_diag,
-        x="count",
-        y="diagnosis",
-        orientation="h",
-        labels={"count": "Admissions", "diagnosis": ""},
-    )
-    fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
-    st.plotly_chart(fig, width="stretch")
-
-# -- Top procedures --
-
-if "top_procedures" in stats:
-    st.subheader("Top 20 Procedures")
-    df_proc = pd.DataFrame(stats["top_procedures"])
-    fig = px.bar(
-        df_proc,
-        x="count",
-        y="procedure",
-        orientation="h",
-        labels={"count": "Admissions", "procedure": ""},
-    )
-    fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
-    st.plotly_chart(fig, width="stretch")
-
-# -- Top lab tests --
-
-if "top_labs" in stats:
-    st.subheader("Top 20 Lab Tests")
-    df_labs = pd.DataFrame(stats["top_labs"])
-    fig = px.bar(
-        df_labs,
-        x="count",
-        y="lab_test",
-        orientation="h",
-        labels={"count": "Measurements", "lab_test": ""},
-    )
-    fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
-    st.plotly_chart(fig, width="stretch")
-
 # -- Demographics --
 
 st.subheader("Demographics")
@@ -78,7 +33,7 @@ if "gender_dist" in stats and "race_dist" in stats:
     with col1:
         df_gender = pd.DataFrame(stats["gender_dist"])
         fig = px.pie(df_gender, values="count", names="gender", title="Gender (patient level)")
-        fig.update_layout(height=300)
+        fig.update_layout(height=300, margin={"t": 40, "b": 20})
         st.plotly_chart(fig, width="stretch")
 
     with col2:
@@ -89,7 +44,7 @@ if "gender_dist" in stats and "race_dist" in stats:
             names="race",
             title="Race/ethnicity (admission level, top 15)",
         )
-        fig.update_layout(height=300)
+        fig.update_layout(height=300, margin={"t": 40, "b": 20})
         st.plotly_chart(fig, width="stretch")
 
 if "age_dist" in stats:
@@ -101,7 +56,7 @@ if "age_dist" in stats:
         title="Age distribution at admission",
         labels={"age": "Age (years)", "count": "Count"},
     )
-    fig.update_layout(height=350)
+    fig.update_layout(height=300, margin={"t": 40, "b": 30})
     st.plotly_chart(fig, width="stretch")
 
     if is_mimic3:
@@ -128,7 +83,7 @@ if "los_dist" in stats:
         labels={"los_days": "Length of Stay (days)", "count": "Admissions"},
         range_x=[0, 60],
     )
-    fig.update_layout(height=350)
+    fig.update_layout(height=300, margin={"t": 30, "b": 30})
     st.plotly_chart(fig, width="stretch")
     st.caption(
         "Capped at 60 days for readability. "
@@ -139,7 +94,6 @@ if "los_dist" in stats:
 
 if "per_admission_volume" in stats:
     st.subheader("Per-Admission Volume")
-    st.markdown("How many records per hospital admission across key clinical tables.")
     rows = []
     for label, vol in stats["per_admission_volume"].items():
         rows.append(
@@ -153,31 +107,74 @@ if "per_admission_volume" in stats:
         )
     st.dataframe(pd.DataFrame(rows), hide_index=True, width=600)
 
+# -- Top diagnoses, procedures, labs (side by side) --
+
+_top_n = 10
+_top_sections = [
+    ("top_diagnoses", "Top 10 Diagnoses", "diagnosis", "Admissions"),
+    ("top_procedures", "Top 10 Procedures", "procedure", "Admissions"),
+    ("top_labs", "Top 10 Lab Tests", "lab_test", "Measurements"),
+]
+_present = [(key, title, col, xlabel) for key, title, col, xlabel in _top_sections if key in stats]
+
+if _present:
+    cols = st.columns(len(_present))
+    for col, (key, title, ycol, xlabel) in zip(cols, _present, strict=True):
+        with col:
+            st.subheader(title)
+            df = pd.DataFrame(stats[key]).head(_top_n)
+            fig = px.bar(
+                df,
+                x="count",
+                y=ycol,
+                orientation="h",
+                labels={"count": xlabel, ycol: ""},
+            )
+            fig.update_layout(
+                yaxis={"categoryorder": "total ascending"},
+                height=400,
+                margin={"t": 20, "b": 20, "l": 10, "r": 10},
+            )
+            st.plotly_chart(fig, width="stretch")
+
 # -- Table sparsity --
 
-if "table_sparsity" in stats:
-    st.subheader("Table Sparsity")
-    st.markdown("Percentage of admissions with at least one row in each clinical table.")
-    sparsity = stats["table_sparsity"]
-    df_sparse = pd.DataFrame(
-        [{"table": k, "pct": v} for k, v in sorted(sparsity.items(), key=lambda x: x[1])]
+if "table_coverage" in stats:
+    st.subheader("Table Coverage")
+    st.caption(
+        "Not every admission has data in every table. This shows the percentage of "
+        "admissions with at least one record in each clinical table. Low coverage "
+        "means the table is only populated for certain types of stays."
     )
-    fig = px.bar(
-        df_sparse,
-        x="pct",
-        y="table",
-        orientation="h",
-        labels={"pct": "% of admissions", "table": ""},
-        range_x=[0, 100],
-    )
-    fig.update_layout(height=max(250, len(sparsity) * 40))
-    st.plotly_chart(fig, width="stretch")
+    coverage = stats["table_coverage"]
+    df_all = pd.DataFrame([{"table": k, "pct": v} for k, v in coverage.items()])
+    df_top = df_all.nlargest(10, "pct").sort_values("pct")
+    df_bottom = df_all.nsmallest(10, "pct").sort_values("pct")
+
+    col_top, col_bottom = st.columns(2)
+    for col, df, title in [
+        (col_top, df_top, "Highest coverage"),
+        (col_bottom, df_bottom, "Lowest coverage"),
+    ]:
+        with col:
+            fig = px.bar(
+                df,
+                x="pct",
+                y="table",
+                orientation="h",
+                title=title,
+                labels={"pct": "% of admissions", "table": ""},
+                range_x=[0, 100],
+            )
+            fig.update_layout(
+                height=max(200, len(df) * 35), margin={"t": 40, "b": 20, "l": 10, "r": 10}
+            )
+            st.plotly_chart(fig, width="stretch")
 
 # -- Data quality --
 
 if "data_quality" in stats:
     st.subheader("Data Quality Checks")
-    st.markdown("Counts of missing or empty values in key fields.")
     df_dq = pd.DataFrame(stats["data_quality"]).rename(
         columns={"check": "Check", "count": "Count", "pct": "% of Total"}
     )

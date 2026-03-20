@@ -11,9 +11,9 @@ st.set_page_config(page_title="MIMIC Explorer", page_icon="🏥", layout="wide")
 pages = st.navigation(
     [
         st.Page("pages/dataset_at_a_glance.py", title="Dataset at a Glance", icon="📊"),
-        st.Page("pages/database_schema.py", title="Database Schema", icon="🔗"),
         st.Page("pages/clinical_insights.py", title="Clinical Insights", icon="🩺"),
         st.Page("pages/note_timeline.py", title="Clinical Timeline", icon="📋"),
+        st.Page("pages/database_schema.py", title="Database Schema", icon="🔗"),
         st.Page("pages/community_references.py", title="Community References", icon="📚"),
     ]
 )
@@ -38,7 +38,7 @@ if _stats_key not in st.session_state:
 if st.session_state[_stats_key]:
     st.sidebar.success("Dataset statistics cached", icon="✅")
     if st.sidebar.button("Recalculate statistics"):
-        with st.spinner("Recalculating dataset statistics..."):
+        with st.spinner("Recalculating dataset statistics. This may take a few minutes..."):
             st.session_state[_stats_key] = compute_stats(DATASETS[dataset_key])
             save_stats(dataset_key, st.session_state[_stats_key])
         st.rerun()
@@ -49,7 +49,7 @@ else:
         "Dataset at a Glance and Clinical Insights pages."
     )
     if st.sidebar.button("Compute dataset statistics"):
-        with st.spinner("Computing dataset statistics (one-time)..."):
+        with st.spinner("Computing dataset statistics. This may take a few minutes..."):
             st.session_state[_stats_key] = compute_stats(DATASETS[dataset_key])
             save_stats(dataset_key, st.session_state[_stats_key])
         st.rerun()
