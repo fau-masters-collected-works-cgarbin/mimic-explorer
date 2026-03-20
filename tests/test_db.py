@@ -8,7 +8,6 @@ from mimic_explorer.db import (
     note_union_ref,
     resolve_refs,
     row_count,
-    sample_rows,
     scalar_query,
     table_ref,
 )
@@ -37,19 +36,6 @@ def test_column_info(sample_csv_gz):
     for c in cols:
         assert "name" in c
         assert "type" in c
-
-
-def test_sample_rows(sample_csv_gz):
-    conn = get_connection()
-    result = sample_rows(conn, sample_csv_gz, limit=2)
-    assert len(result) == 2
-    assert "subject_id" in result.columns
-
-
-def test_sample_rows_respects_limit(sample_csv_gz):
-    conn = get_connection()
-    result = sample_rows(conn, sample_csv_gz, limit=1)
-    assert len(result) == 1
 
 
 def test_scalar_query(sample_csv_gz):

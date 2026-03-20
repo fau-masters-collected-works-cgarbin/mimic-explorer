@@ -9,8 +9,6 @@ import duckdb
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import pandas as pd
-
 
 def get_connection() -> duckdb.DuckDBPyConnection:
     """Return a fresh DuckDB in-memory connection.
@@ -46,15 +44,6 @@ def column_info(conn: duckdb.DuckDBPyConnection, file_path: Path) -> list[dict[s
     """
     cursor = conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT 0")
     return [{"name": col[0], "type": str(col[1])} for col in cursor.description]
-
-
-def sample_rows(
-    conn: duckdb.DuckDBPyConnection,
-    file_path: Path,
-    limit: int = 100,
-) -> pd.DataFrame:
-    """Return a sample of rows from a CSV.gz file as a DataFrame."""
-    return conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT {limit}").fetchdf()
 
 
 def resolve_refs(tables: dict[str, Path], names: list[str]) -> dict[str, str | None]:
