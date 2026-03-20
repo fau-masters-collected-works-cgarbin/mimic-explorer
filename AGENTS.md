@@ -6,15 +6,16 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
 
 ## Architecture
 
-- `app.py` -- Streamlit entry point, dataset selector sidebar, `st.navigation()` page routing. UI only.
-- `src/mimic_explorer/config.py` -- Dataset path configuration, table discovery, `LARGE_TABLES` set. No UI imports.
-- `src/mimic_explorer/db.py` -- DuckDB connection, `table_ref()` resolver, `note_union_ref()` for MIMIC-IV-Note UNION queries, query helpers (`scalar_query`, `resolve_refs`, `column_info`, `row_count`, `sample_rows`). No UI imports.
-- `src/mimic_explorer/stats.py` -- Pre-compute and cache all static dataset statistics. Computes all queries in parallel via `ThreadPoolExecutor`, saves to `.mimic_explorer_cache/` as JSON. Used by Dataset at a Glance and Clinical Insights pages.
-- `pages/dataset_at_a_glance.py` -- Key dataset metrics and contextual explanations for newcomers. UI only, reads from cached stats.
-- `pages/database_schema.py` -- Join key hierarchy, tables grouped by connectivity with column details in expanders, join patterns. UI only, uses db and config.
-- `pages/clinical_insights.py` -- Distributions: top diagnoses/procedures/labs, demographics, LOS, per-admission volume, table sparsity, data quality. UI only, reads from cached stats.
-- `pages/note_timeline.py` -- Clinical timeline across hospital stays. Shows notes alongside structured clinical events (abnormal labs, unit transfers, medication starts/stops) on a unified timeline. Also includes note category overview, temporal density, note-to-note intervals, note text viewer. UI only, uses db and config. MIMIC-III uses NOTEEVENTS + LABEVENTS/TRANSFERS/PRESCRIPTIONS; MIMIC-IV uses MIMIC-IV-Note module + hosp tables (labevents/transfers/prescriptions).
-- `pages/community_references.py` -- Links to external MIMIC resources. Static content, no data queries.
+- `app.py` -- Streamlit entry point, dataset selector sidebar, page navigation. UI only.
+- `src/mimic_explorer/config.py` -- Dataset path configuration and table discovery. No UI imports.
+- `src/mimic_explorer/db.py` -- DuckDB connection and query helpers for reading MIMIC CSV.gz files. No UI imports.
+- `src/mimic_explorer/stats.py` -- Pre-compute and cache all static dataset statistics to disk. Used by Dataset at a Glance and Clinical Insights pages.
+- `src/mimic_explorer/timeline_queries.py` -- Data-fetching queries for the Clinical Timeline page. No UI imports.
+- `pages/dataset_at_a_glance.py` -- Key dataset metrics and contextual explanations. UI only, reads from cached stats.
+- `pages/database_schema.py` -- Join key hierarchy, table details, join patterns. UI only.
+- `pages/clinical_insights.py` -- Demographics, distributions, table coverage, data quality. UI only, reads from cached stats.
+- `pages/note_timeline.py` -- Clinical timeline: notes alongside labs, transfers, medications across hospital stays. UI only.
+- `pages/community_references.py` -- Links to external MIMIC resources. Static content.
 
 ## MIMIC schema reference
 
