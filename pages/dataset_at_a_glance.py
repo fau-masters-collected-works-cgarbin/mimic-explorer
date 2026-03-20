@@ -3,103 +3,21 @@
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import get_connection, scalar_query, table_ref
 
 st.title("Dataset at a Glance")
 
 dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
-tables = dataset.find_tables()
 
-# Key table paths
-patients_path = tables.get("patients")
-admissions_path = tables.get("admissions")
-icustays_path = tables.get("icustays")
-
-if not patients_path or not admissions_path:
-    st.error("Could not find PATIENTS or ADMISSIONS tables in this dataset.")
+stats = st.session_state.get(f"cached_stats_{st.session_state['dataset_key']}")
+if not stats or "overview" not in stats:
+    st.info("Click **Compute dataset statistics** in the sidebar to get started.")
     st.stop()
 
-
-# -- Cached metric computation --
-
-
-@st.cache_data(show_spinner="Computing dataset overview...")
-def compute_overview(
-    dataset_name: str,
-    patients_path: str,  # str (not Path) because st.cache_data needs hashable args
-    admissions_path: str,
-    icustays_path: str | None,
-    cols: tuple[str, ...],
-):
-    """Compute all overview metrics in one pass per table."""
-    gender_col, admit_col, disch_col, death_col, los_col = cols
-    conn = get_connection()
-    p = table_ref(patients_path)
-    a = table_ref(admissions_path)
-
-    total_patients = scalar_query(conn, f"SELECT count(*) FROM {p}")
-    total_admissions = scalar_query(conn, f"SELECT count(*) FROM {a}")
-
-    # Gender split
-    male_pct = scalar_query(
-        conn,
-        f"SELECT round(100.0 * count(*) FILTER "
-        f"(WHERE \"{gender_col}\" = 'M') / count(*), 1) FROM {p}",
-    )
-
-    # Admission date range
-    min_admit = scalar_query(conn, f'SELECT min("{admit_col}")::DATE FROM {a}')
-    max_admit = scalar_query(conn, f'SELECT max("{admit_col}")::DATE FROM {a}')
-
-    # Hospital mortality rate
-    mortality_pct = scalar_query(
-        conn,
-        f'SELECT round(100.0 * avg("{death_col}"), 1) FROM {a}',
-    )
-
-    # Median hospital length of stay (days)
-    median_los = scalar_query(
-        conn,
-        f"""SELECT round(median(
-            date_diff('hour', "{admit_col}"::TIMESTAMP, "{disch_col}"::TIMESTAMP) / 24.0
-        ), 1) FROM {a}""",
-    )
-
-    # ICU stats (if table exists)
-    total_icu_stays = None
-    median_icu_los = None
-    if icustays_path:
-        i = table_ref(icustays_path)
-        total_icu_stays = scalar_query(conn, f"SELECT count(*) FROM {i}")
-        median_icu_los = scalar_query(conn, f'SELECT round(median("{los_col}"), 1) FROM {i}')
-
-    return {
-        "total_patients": total_patients,
-        "total_admissions": total_admissions,
-        "male_pct": male_pct,
-        "min_admit": min_admit,
-        "max_admit": max_admit,
-        "mortality_pct": mortality_pct,
-        "median_los": median_los,
-        "total_icu_stays": total_icu_stays,
-        "median_icu_los": median_icu_los,
-    }
-
-
-metrics = compute_overview(
-    dataset.name,
-    str(patients_path),
-    str(admissions_path),
-    str(icustays_path) if icustays_path else None,
-    (
-        dataset.col("gender"),
-        dataset.col("admittime"),
-        dataset.col("dischtime"),
-        dataset.col("hospital_expire_flag"),
-        dataset.col("los"),
-    ),
-)
+metrics = stats["overview"]
+if not metrics:
+    st.error("Could not find PATIENTS or ADMISSIONS tables in this dataset.")
+    st.stop()
 
 # -- Display --
 

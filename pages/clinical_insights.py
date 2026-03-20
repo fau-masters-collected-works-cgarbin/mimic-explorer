@@ -1,17 +1,21 @@
 """Clinical Insights -- distributions and patterns in the dataset."""
 
+import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import get_connection, resolve_refs
 
 st.title("Clinical Insights")
 
 dataset = DATASETS[st.session_state["dataset_key"]]
 st.caption(f"Showing: {dataset.name}")
-tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
+
+stats = st.session_state.get(f"cached_stats_{st.session_state['dataset_key']}")
+if not stats:
+    st.info("Click **Compute dataset statistics** in the sidebar to get started.")
+    st.stop()
 
 st.markdown(
     "Pre-built queries that reveal the shape of the data. "
@@ -19,63 +23,11 @@ st.markdown(
     "names, not opaque IDs."
 )
 
-# Resolve table references
-refs = resolve_refs(
-    tables,
-    [
-        "patients",
-        "admissions",
-        "diagnoses_icd",
-        "procedures_icd",
-        "d_icd_diagnoses",
-        "d_icd_procedures",
-        "d_labitems",
-        "labevents",
-    ],
-)
-patients_ref = refs["patients"]
-admissions_ref = refs["admissions"]
-diagnoses_ref = refs["diagnoses_icd"]
-procedures_ref = refs["procedures_icd"]
-d_diag_ref = refs["d_icd_diagnoses"]
-d_proc_ref = refs["d_icd_procedures"]
-d_lab_ref = refs["d_labitems"]
-labevents_ref = refs["labevents"]
-
-# Column names
-icd_col = dataset.col("icd_code")
-title_col = dataset.col("long_title")
-gender_col = dataset.col("gender")
-admit_col = dataset.col("admittime")
-disch_col = dataset.col("dischtime")
-race_col = dataset.col("race")
-itemid_col = dataset.col("itemid")
-label_col = dataset.col("label")
-
-# MIMIC-IV has both ICD-9 and ICD-10; joins need the version qualifier
-icd_join = f'd."{icd_col}" = t."{icd_col}"'
-if not is_mimic3:
-    icd_join += ' AND d."icd_version" = t."icd_version"'
-
-
 # -- Top diagnoses --
 
-if diagnoses_ref and d_diag_ref:
+if "top_diagnoses" in stats:
     st.subheader("Top 20 Diagnoses")
-
-    @st.cache_data(show_spinner="Querying diagnoses...")
-    def top_diagnoses(ds, diag_ref, d_ref, join_clause, col):
-        conn = get_connection()
-        return conn.execute(f"""
-            SELECT d."{col}" AS diagnosis, count(*) AS count
-            FROM {diag_ref} t
-            JOIN {d_ref} d ON {join_clause}
-            GROUP BY d."{col}"
-            ORDER BY count DESC
-            LIMIT 20
-        """).fetchdf()
-
-    df_diag = top_diagnoses(dataset.name, diagnoses_ref, d_diag_ref, icd_join, title_col)
+    df_diag = pd.DataFrame(stats["top_diagnoses"])
     fig = px.bar(
         df_diag,
         x="count",
@@ -88,22 +40,9 @@ if diagnoses_ref and d_diag_ref:
 
 # -- Top procedures --
 
-if procedures_ref and d_proc_ref:
+if "top_procedures" in stats:
     st.subheader("Top 20 Procedures")
-
-    @st.cache_data(show_spinner="Querying procedures...")
-    def top_procedures(ds, proc_ref, d_ref, join_clause, col):
-        conn = get_connection()
-        return conn.execute(f"""
-            SELECT d."{col}" AS procedure, count(*) AS count
-            FROM {proc_ref} t
-            JOIN {d_ref} d ON {join_clause}
-            GROUP BY d."{col}"
-            ORDER BY count DESC
-            LIMIT 20
-        """).fetchdf()
-
-    df_proc = top_procedures(dataset.name, procedures_ref, d_proc_ref, icd_join, title_col)
+    df_proc = pd.DataFrame(stats["top_procedures"])
     fig = px.bar(
         df_proc,
         x="count",
@@ -116,28 +55,15 @@ if procedures_ref and d_proc_ref:
 
 # -- Top lab tests --
 
-if labevents_ref and d_lab_ref:
-    st.subheader("Top 20 Lab Tests (sampled)")
-
-    @st.cache_data(show_spinner="Sampling lab events (this may take a moment)...")
-    def top_labs(ds, lab_ref, dlab_ref, item_col, lbl_col):
-        conn = get_connection()
-        return conn.execute(f"""
-            SELECT d."{lbl_col}" AS lab_test, count(*) AS count
-            FROM (SELECT "{item_col}" FROM {lab_ref} LIMIT 1000000) t
-            JOIN {dlab_ref} d ON d."{item_col}" = t."{item_col}"
-            GROUP BY d."{lbl_col}"
-            ORDER BY count DESC
-            LIMIT 20
-        """).fetchdf()
-
-    df_labs = top_labs(dataset.name, labevents_ref, d_lab_ref, itemid_col, label_col)
+if "top_labs" in stats:
+    st.subheader("Top 20 Lab Tests")
+    df_labs = pd.DataFrame(stats["top_labs"])
     fig = px.bar(
         df_labs,
         x="count",
         y="lab_test",
         orientation="h",
-        labels={"count": "Measurements (sampled)", "lab_test": ""},
+        labels={"count": "Measurements", "lab_test": ""},
     )
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=500)
     st.plotly_chart(fig, width="stretch")
@@ -146,40 +72,17 @@ if labevents_ref and d_lab_ref:
 
 st.subheader("Demographics")
 
-if patients_ref and admissions_ref:
+if "gender_dist" in stats and "race_dist" in stats:
     col1, col2 = st.columns(2)
 
-    # Gender distribution
-    @st.cache_data(show_spinner="Computing gender distribution...")
-    def gender_dist(ds, pat_ref, g_col):
-        conn = get_connection()
-        return conn.execute(f"""
-            SELECT "{g_col}" AS gender, count(*) AS count
-            FROM {pat_ref}
-            GROUP BY "{g_col}"
-            ORDER BY count DESC
-        """).fetchdf()
-
     with col1:
-        df_gender = gender_dist(dataset.name, patients_ref, gender_col)
+        df_gender = pd.DataFrame(stats["gender_dist"])
         fig = px.pie(df_gender, values="count", names="gender", title="Gender (patient level)")
         fig.update_layout(height=300)
         st.plotly_chart(fig, width="stretch")
 
-    # Race/ethnicity distribution
-    @st.cache_data(show_spinner="Computing race/ethnicity distribution...")
-    def race_dist(ds, adm_ref, r_col):
-        conn = get_connection()
-        return conn.execute(f"""
-            SELECT "{r_col}" AS race, count(*) AS count
-            FROM {adm_ref}
-            GROUP BY "{r_col}"
-            ORDER BY count DESC
-            LIMIT 15
-        """).fetchdf()
-
     with col2:
-        df_race = race_dist(dataset.name, admissions_ref, race_col)
+        df_race = pd.DataFrame(stats["race_dist"])
         fig = px.pie(
             df_race,
             values="count",
@@ -189,29 +92,8 @@ if patients_ref and admissions_ref:
         fig.update_layout(height=300)
         st.plotly_chart(fig, width="stretch")
 
-    @st.cache_data(show_spinner="Computing age distribution...")
-    def age_dist(ds, pat_ref, adm_ref, uppercase):
-        conn = get_connection()
-        if uppercase:
-            # MIMIC-III: compute age from DOB and first admission time.
-            # Patients >89 have DOB shifted to ~300 years before admission;
-            # cap at 90 to represent the ">89" group.
-            return conn.execute(f"""
-                SELECT
-                    LEAST(
-                        date_diff('year', "DOB"::TIMESTAMP, "ADMITTIME"::TIMESTAMP),
-                        90
-                    ) AS age
-                FROM {pat_ref} p
-                JOIN {adm_ref} a ON p."SUBJECT_ID" = a."SUBJECT_ID"
-            """).fetchdf()
-        # MIMIC-IV: anchor_age is directly available (one per patient)
-        return conn.execute(f"""
-                SELECT "anchor_age" AS age
-                FROM {pat_ref}
-            """).fetchdf()
-
-    df_age = age_dist(dataset.name, patients_ref, admissions_ref, is_mimic3)
+if "age_dist" in stats:
+    df_age = pd.DataFrame(stats["age_dist"])
     fig = px.histogram(
         df_age,
         x="age",
@@ -236,23 +118,9 @@ if patients_ref and admissions_ref:
 
 # -- Length of stay distribution --
 
-if admissions_ref:
+if "los_dist" in stats:
     st.subheader("Hospital Length of Stay")
-
-    @st.cache_data(show_spinner="Computing length-of-stay distribution...")
-    def los_dist(ds, adm_ref, adm_col, dis_col):
-        conn = get_connection()
-        return conn.execute(f"""
-            SELECT
-                date_diff('hour',
-                    "{adm_col}"::TIMESTAMP,
-                    "{dis_col}"::TIMESTAMP
-                ) / 24.0 AS los_days
-            FROM {adm_ref}
-            WHERE "{dis_col}" IS NOT NULL
-        """).fetchdf()
-
-    df_los = los_dist(dataset.name, admissions_ref, admit_col, disch_col)
+    df_los = pd.DataFrame(stats["los_dist"])
     fig = px.histogram(
         df_los,
         x="los_days",
@@ -266,3 +134,51 @@ if admissions_ref:
         "Capped at 60 days for readability. "
         f"The longest stay in this dataset is {df_los['los_days'].max():.0f} days."
     )
+
+# -- Per-admission volume --
+
+if "per_admission_volume" in stats:
+    st.subheader("Per-Admission Volume")
+    st.markdown("How many records per hospital admission across key clinical tables.")
+    rows = []
+    for label, vol in stats["per_admission_volume"].items():
+        rows.append(
+            {
+                "Table": label,
+                "Median": vol["median"],
+                "P25": vol["p25"],
+                "P75": vol["p75"],
+                "Max": vol["max"],
+            }
+        )
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width=600)
+
+# -- Table sparsity --
+
+if "table_sparsity" in stats:
+    st.subheader("Table Sparsity")
+    st.markdown("Percentage of admissions with at least one row in each clinical table.")
+    sparsity = stats["table_sparsity"]
+    df_sparse = pd.DataFrame(
+        [{"table": k, "pct": v} for k, v in sorted(sparsity.items(), key=lambda x: x[1])]
+    )
+    fig = px.bar(
+        df_sparse,
+        x="pct",
+        y="table",
+        orientation="h",
+        labels={"pct": "% of admissions", "table": ""},
+        range_x=[0, 100],
+    )
+    fig.update_layout(height=max(250, len(sparsity) * 40))
+    st.plotly_chart(fig, width="stretch")
+
+# -- Data quality --
+
+if "data_quality" in stats:
+    st.subheader("Data Quality Checks")
+    st.markdown("Counts of missing or empty values in key fields.")
+    df_dq = pd.DataFrame(stats["data_quality"]).rename(
+        columns={"check": "Check", "count": "Count", "pct": "% of Total"}
+    )
+    st.dataframe(df_dq, hide_index=True, width=600)

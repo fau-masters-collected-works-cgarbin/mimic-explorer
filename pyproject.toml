@@ -59,6 +59,9 @@ ignore = [
 "src/mimic_explorer/db.py" = [
     "S608",    # SQL injection false positives (DuckDB read_csv_auto on local files)
 ]
+"src/mimic_explorer/stats.py" = [
+    "S608",    # SQL injection false positives (DuckDB read_csv_auto on local files)
+]
 "src/mimic_explorer/timeline_queries.py" = [
     "S608",    # SQL injection false positives (column names from config, not user input)
     "PLR0913", # explicit parameter passing preferred over context objects for testability
