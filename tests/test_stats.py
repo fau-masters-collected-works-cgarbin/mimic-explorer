@@ -206,14 +206,17 @@ class TestComputeStats:
             assert "p75" in stats
             assert "max" in stats
 
-    def test_table_sparsity(self, mimic3_dataset):
+    def test_table_coverage(self, mimic3_dataset):
         result = compute_stats(mimic3_dataset)
-        assert "table_sparsity" in result
-        sparsity = result["table_sparsity"]
-        # All 4 admissions have at least one diagnosis? No, only 3 of 4 do.
-        assert sparsity["diagnoses_icd"] == pytest.approx(75.0)
+        assert "table_coverage" in result
+        coverage = result["table_coverage"]
+        # 3 of 4 admissions have at least one diagnosis
+        assert coverage["diagnoses_icd"] == pytest.approx(75.0)
         # prescriptions: 2 of 4 admissions
-        assert sparsity["prescriptions"] == pytest.approx(50.0)
+        assert coverage["prescriptions"] == pytest.approx(50.0)
+        # All tables with hadm_id should be discovered dynamically
+        assert "labevents" in coverage
+        assert "transfers" in coverage
 
     def test_data_quality(self, mimic3_dataset):
         result = compute_stats(mimic3_dataset)

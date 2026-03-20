@@ -136,7 +136,7 @@ def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
 
     hadm_col = cfg.col("hadm_id")
     _add_volume_tasks(tasks, refs, note_ref, hadm_col)
-    _add_sparsity_tasks(tasks, refs, note_ref, is_mimic3=is_mimic3, hadm_col=hadm_col)
+    _add_coverage_tasks(tasks, refs, note_ref, cfg=cfg)
     _add_data_quality_tasks(tasks, refs, note_ref, is_mimic3=is_mimic3, cfg=cfg)
 
     return tasks
@@ -159,33 +159,37 @@ def _add_volume_tasks(
         )
 
 
-def _add_sparsity_tasks(
+def _add_coverage_tasks(
     tasks: dict[str, Any],
     refs: dict,
     note_ref: str | None,
     *,
-    is_mimic3: bool,
-    hadm_col: str,
+    cfg: DatasetConfig,
 ) -> None:
     if not refs["admissions"]:
         return
-    sparsity_tables = {
-        "diagnoses_icd": refs["diagnoses_icd"],
-        "procedures_icd": refs["procedures_icd"],
-        "labevents": refs["labevents"],
-        "prescriptions": refs["prescriptions"],
-        "transfers": refs["transfers"],
-    }
-    if is_mimic3:
-        sparsity_tables["noteevents"] = refs["noteevents"]
-    elif note_ref:
-        sparsity_tables["notes"] = note_ref
+    adm_ref = refs["admissions"]
+    hadm_col = cfg.col("hadm_id")
 
-    for tname, tref in sparsity_tables.items():
-        if tref:
-            tasks[f"sparsity_{tname}"] = lambda tn=tname, tr=tref: _query_sparsity(
-                refs["admissions"], tr, hadm_col, tn
-            )
+    # Discover all tables that have a hadm_id column
+    tables = cfg.find_tables()
+    conn = get_connection()
+    coverage_tables: dict[str, str] = {}
+    for tname, tpath in tables.items():
+        if tname == "admissions":
+            continue
+        cols = {c[0] for c in conn.execute(f"SELECT * FROM {table_ref(tpath)} LIMIT 0").description}
+        if hadm_col in cols:
+            coverage_tables[tname] = table_ref(tpath)
+
+    # Add MIMIC-IV-Note tables (not in the main table list)
+    if not cfg.uppercase_filenames and note_ref:
+        coverage_tables["notes"] = note_ref
+
+    for tname, tref in coverage_tables.items():
+        tasks[f"coverage_{tname}"] = lambda tn=tname, tr=tref: _query_coverage(
+            adm_ref, tr, hadm_col, tn
+        )
 
 
 def _add_data_quality_tasks(
@@ -241,13 +245,13 @@ def _assemble_stats(results: dict[str, Any]) -> dict[str, Any]:
     if volume:
         out["per_admission_volume"] = volume
 
-    sparsity = {}
+    coverage = {}
     for key, val in results.items():
-        if key.startswith("sparsity_") and val is not None:
+        if key.startswith("coverage_") and val is not None:
             tname, pct = val
-            sparsity[tname] = pct
-    if sparsity:
-        out["table_sparsity"] = sparsity
+            coverage[tname] = pct
+    if coverage:
+        out["table_coverage"] = coverage
 
     dq_checks = [
         results[key]
@@ -425,7 +429,7 @@ def _query_per_admission_volume(tbl_ref: str, hadm_col: str, label: str) -> tupl
     return (label, {"median": row[0], "p25": row[1], "p75": row[2], "max": row[3]})
 
 
-def _query_sparsity(
+def _query_coverage(
     adm_ref: str, tbl_ref: str, hadm_col: str, table_name: str
 ) -> tuple[str, float]:
     conn = get_connection()
