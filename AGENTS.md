@@ -36,6 +36,16 @@ Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses D
   ```
 - Sync with main before starting significant new work in a long-running worktree, to avoid large conflict sets at merge time.
 
+## Data protection
+
+MIMIC is a restricted-access dataset. Treat all patient data as sensitive, even though it is de-identified.
+
+- Never commit MIMIC data files (CSV, CSV.gz, Parquet) to the repository. Source data lives outside the repo.
+- Never write patient-level data or query results to files inside the repo.
+- `.mimic_explorer_cache/` stores derived statistics on disk. It is gitignored and must stay that way.
+- Any new on-disk cache or output path must be added to `.gitignore` before the commit that introduces it.
+- Test fixtures must use synthetic data only (see `tests/conftest.py`). Never copy real MIMIC rows into tests.
+
 ## Setup
 
 ```bash
