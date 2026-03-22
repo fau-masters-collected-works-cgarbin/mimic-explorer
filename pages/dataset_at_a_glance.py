@@ -1,4 +1,4 @@
-"""Dataset at a Glance -- key numbers that orient a new MIMIC user."""
+"""Dataset at a Glance: key numbers that orient a new MIMIC user."""
 
 import streamlit as st
 

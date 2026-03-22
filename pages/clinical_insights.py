@@ -1,4 +1,4 @@
-"""Clinical Insights -- distributions and patterns in the dataset."""
+"""Clinical Insights: distributions and patterns in the dataset."""
 
 import pandas as pd
 import plotly.express as px

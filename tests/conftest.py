@@ -71,7 +71,7 @@ def mimic4_note_layout(tmp_path: Path) -> Path:
     with gzip.open(base / "radiology.csv.gz", "wt") as f:
         f.write(radiology_csv)
 
-    # Detail table with different schema -- should be ignored by note_union_ref
+    # Detail table with different schema (should be ignored by note_union_ref)
     detail_csv = (
         "note_id,subject_id,field_name,field_value,field_ordinal\n"
         "1,10,chief_complaint,Chest pain,1\n"

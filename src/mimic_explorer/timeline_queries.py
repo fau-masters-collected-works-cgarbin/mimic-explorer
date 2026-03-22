@@ -132,7 +132,7 @@ def _fetch_abnormal_labs(hadm: int, ref: str | None, lab_cols: dict) -> pd.DataF
                CAST("{c["itemid"]}" AS VARCHAR) AS itemid
         FROM {ref}
         WHERE "{c["hadm"]}" = $1
-          -- flag is empty string (not NULL) for normal results in MIMIC-III
+          -- Flag is empty string (not NULL) for normal results in MIMIC-III
           AND "{c["flag"]}" IS NOT NULL AND "{c["flag"]}" != ''
           AND "{c["charttime"]}" IS NOT NULL
         ORDER BY "{c["charttime"]}"
@@ -194,7 +194,7 @@ def fetch_admission_data(
     """Fetch notes and structured events for a single admission.
 
     Returns a dict with keys "notes", "labs", "transfers", "meds", each a DataFrame.
-    Queries run in parallel; each thread creates its own DuckDB connection because
+    Queries run in parallel. Each thread creates its own DuckDB connection because
     DuckDB connections are not thread-safe.
     """
     with ThreadPoolExecutor(max_workers=4) as pool:

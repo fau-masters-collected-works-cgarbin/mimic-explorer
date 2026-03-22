@@ -1,4 +1,4 @@
-"""Database Schema -- how MIMIC tables connect and what they contain."""
+"""Database Schema: how MIMIC tables connect and what they contain."""
 
 from pathlib import Path
 
@@ -121,7 +121,7 @@ if patient_only:
     patients -> patient_tables [style=dashed, label="subject_id"];
 """
 
-# Dictionary/lookup table relationships -- connect to the clinical tables they describe
+# Dictionary/lookup table relationships: connect to the clinical tables they describe
 DICT_LINKS_MIMIC3 = {
     "d_icd_diagnoses": [("admission_tables", "ICD9_CODE")],
     "d_icd_procedures": [("admission_tables", "ICD9_CODE")],
@@ -156,7 +156,7 @@ st.graphviz_chart(dot)
 st.subheader("Tables by connectivity level")
 
 include_large = st.checkbox(
-    "Include row counts for large tables (CHARTEVENTS, LABEVENTS, etc.) -- slow first time",
+    "Include row counts for large tables (CHARTEVENTS, LABEVENTS, etc.). Slow on first run.",
     value=False,
 )
 
@@ -165,7 +165,7 @@ def render_table_group(title, description, table_names):
     """Render a connectivity group with expanders for each table."""
     if not table_names:
         return
-    st.markdown(f"**{title}** -- {description}")
+    st.markdown(f"**{title}**: {description}")
     for name in table_names:
         info = schema[name]
         cols = info["columns"]
@@ -183,7 +183,7 @@ def render_table_group(title, description, table_names):
 
             # Row count
             if name in LARGE_TABLES and not include_large:
-                st.caption("Large table -- row count skipped")
+                st.caption("Large table, row count skipped")
             else:
                 count = get_row_count(
                     dataset.name, name, str(tables[name]), skip_large=not include_large
@@ -191,7 +191,7 @@ def render_table_group(title, description, table_names):
                 if count is not None:
                     st.metric("Rows", f"{count:,}")
                 else:
-                    st.caption("Large table -- row count skipped")
+                    st.caption("Large table, row count skipped")
 
             # Column details
             st.dataframe(pd.DataFrame(cols), hide_index=True)

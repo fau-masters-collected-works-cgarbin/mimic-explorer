@@ -265,7 +265,7 @@ def _assemble_stats(results: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Individual query functions -- each gets its own connection
+# Individual query functions. Each gets its own connection.
 # ---------------------------------------------------------------------------
 
 

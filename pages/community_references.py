@@ -1,4 +1,4 @@
-"""Community References -- links to existing MIMIC resources."""
+"""Community References: links to existing MIMIC resources."""
 
 import streamlit as st
 

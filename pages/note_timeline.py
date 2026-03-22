@@ -1,4 +1,4 @@
-"""Clinical Timeline -- notes and structured events across a hospital stay."""
+"""Clinical Timeline: notes and structured events across a hospital stay."""
 
 import random
 

@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-# Column name mappings -- logical name to actual column name per MIMIC version.
+# Column name mappings: logical name to actual column name per MIMIC version.
 # Logical names are lowercase. None means the column doesn't exist in that version.
 # Most differences are just casing, but some columns have genuinely different names:
 #   MIMIC-III ETHNICITY -> MIMIC-IV race
@@ -168,7 +168,7 @@ DATASETS: dict[str, DatasetConfig] = {
     ),
 }
 
-# Tables that are very large and slow to count -- skip by default in row count operations
+# Tables too large to count by default in row count operations
 LARGE_TABLES = frozenset(
     {
         "chartevents",
