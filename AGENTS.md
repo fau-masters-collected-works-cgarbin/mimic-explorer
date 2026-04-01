@@ -105,6 +105,8 @@ Pre-commit hooks run automatically on commit: ruff (lint + format), trailing-whi
 
 ## Key design decisions
 
+DuckDB runs in-process as a library, not as a separate database server. It reads CSV.gz files directly with `read_csv_auto()`, so there is no ETL step and no database to set up or maintain. MIMIC data is static (released as versioned snapshots), so there is no value in maintaining a running database process. The tradeoff is that every query re-reads from CSV.gz, which is slower than querying a pre-loaded database. The project mitigates this with the disk cache in `stats.py` (compute once, save to JSON) and Streamlit's `cache_data` for per-session results.
+
 - DuckDB reads CSV.gz directly via `read_csv_auto()`. No ETL step.
 - `table_ref(path)` returns a SQL fragment: `read_csv_auto('/path/to/file.csv.gz')`.
 - Tables listed in `LARGE_TABLES` (in `config.py`) are skipped by default in row count operations.
