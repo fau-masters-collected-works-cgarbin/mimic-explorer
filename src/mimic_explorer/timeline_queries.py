@@ -148,6 +148,7 @@ def _fetch_abnormal_labs(hadm: int, ref: str | None, lab_cols: dict) -> pd.DataF
 
 
 def _fetch_transfers(hadm: int, ref: str | None, xfer_cols: dict) -> pd.DataFrame:
+    """Fetch unit transfers for timeline overlay (admit, discharge, intra-hospital)."""
     if ref is None:
         return pd.DataFrame()
     c = xfer_cols
@@ -167,6 +168,12 @@ def _fetch_transfers(hadm: int, ref: str | None, xfer_cols: dict) -> pd.DataFram
 
 
 def _fetch_meds(hadm: int, ref: str | None, rx_cols: dict) -> pd.DataFrame:
+    """Fetch medication orders for timeline overlay.
+
+    MIMIC-III prescriptions have date-only timestamps (STARTDATE/ENDDATE),
+    so medication markers appear at midnight on the timeline.
+    MIMIC-IV prescriptions have full timestamps (starttime/stoptime).
+    """
     if ref is None:
         return pd.DataFrame()
     c = rx_cols

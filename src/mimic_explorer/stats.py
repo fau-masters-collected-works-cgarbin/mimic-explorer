@@ -295,6 +295,12 @@ def _assemble_stats(results: dict[str, Any]) -> dict[str, Any]:
 
 
 def _query_overview(cfg: DatasetConfig, tables: dict[str, Path]) -> dict:
+    """Core dataset metrics for the "at a glance" page.
+
+    Computes patient/admission/ICU counts, gender split, date range,
+    mortality rate, and median length of stay. Uses a single connection
+    for all queries since this runs in its own thread.
+    """
     conn = get_connection()
     patients_path = tables.get("patients")
     admissions_path = tables.get("admissions")
@@ -390,6 +396,9 @@ def _query_gender_dist(pat_ref: str, gender_col: str) -> list[dict]:
 
 def _query_race_dist(adm_ref: str, race_col: str) -> list[dict]:
     conn = get_connection()
+    # MIMIC has 40+ race/ethnicity categories (many with small counts).
+    # Top 15 covers the meaningful groups; the rest are shown as a pie chart
+    # where too many tiny slices would be unreadable.
     df = conn.execute(f"""
         SELECT "{race_col}" AS race, count(*) AS count
         FROM {adm_ref}
@@ -430,6 +439,9 @@ def _query_age_dist(pat_ref: str, adm_ref: str, *, is_mimic3: bool) -> list[dict
 
 
 def _query_los_dist(adm_ref: str, admit_col: str, disch_col: str) -> list[dict]:
+    # Compute LOS as hours / 24 instead of date_diff('day') to preserve
+    # fractional days. date_diff('day') truncates, so a 36-hour stay would
+    # show as 1 day instead of 1.5.
     conn = get_connection()
     df = conn.execute(f"""
         SELECT

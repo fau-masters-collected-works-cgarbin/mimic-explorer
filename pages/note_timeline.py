@@ -126,6 +126,9 @@ st.subheader("Note Categories")
 st.caption("Distribution of note types across the entire dataset.")
 
 
+# Streamlit caching pattern: `ds` (dataset name) is not used inside the function
+# but serves as the cache key, so the cache invalidates when the user switches
+# datasets. The actual table references come from the outer scope (closures).
 @st.cache_data(show_spinner="Counting notes by category (first run may take ~10s)...")
 def _cached_category_counts(ds):
     return fetch_category_counts(noteevents_ref, category_col, error_filter)

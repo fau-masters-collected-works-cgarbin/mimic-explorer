@@ -27,6 +27,8 @@ def scan_schema(dataset_name: str, tables_map: dict[str, str]):
     result = {}
     for table_name, file_path in sorted(tables_map.items()):
         cols = column_info(conn, Path(file_path))
+        # Lowercase for comparison: MIMIC-III uses UPPERCASE column names
+        # (e.g. SUBJECT_ID), MIMIC-IV uses lowercase (subject_id).
         col_names_lower = {c["name"].lower() for c in cols}
         result[table_name] = {
             "subject_id": "subject_id" in col_names_lower,
