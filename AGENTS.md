@@ -86,7 +86,7 @@ uv run ruff check .
 uv run ruff format .
 ```
 
-Pre-commit hooks run automatically on commit: ruff (lint + format), trailing-whitespace, end-of-file-fixer, check-yaml, check-merge-conflict, check-added-large-files (500 KB limit).
+Pre-commit hooks run automatically on commit: ruff (lint + format), trailing-whitespace, end-of-file-fixer, check-yaml, check-merge-conflict, check-added-large-files (100 KB limit).
 
 ## Code style
 

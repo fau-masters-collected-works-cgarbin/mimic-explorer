@@ -98,7 +98,6 @@ these identifiers, and understanding this hierarchy is the key to joining tables
 admission_label = "\\n".join(admission_level)
 icu_label = "\\n".join(icu_level)
 patient_label = "\\n".join(patient_only)
-dict_label = "\\n".join(no_keys)
 
 # Build a Graphviz DOT diagram showing the join hierarchy. Core tables are
 # colored by level (blue=patient, green=admission, orange=ICU). Clinical
