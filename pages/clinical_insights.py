@@ -83,6 +83,8 @@ if "los_dist" in stats:
         x="los_days",
         nbins=100,
         labels={"los_days": "Length of Stay (days)", "count": "Admissions"},
+        # Cap at 60 days for readability. A few extreme stays (100+ days) would
+        # compress the clinically interesting 0-30 day range into a sliver.
         range_x=[0, 60],
     )
     fig.update_layout(height=300, margin={"t": 30, "b": 30})
@@ -154,6 +156,9 @@ if "table_coverage" in stats:
         "admissions with at least one record in each clinical table. Low coverage "
         "means the table is only populated for certain types of stays."
     )
+    # Split into highest and lowest coverage to highlight both universally
+    # present tables (diagnoses, labs) and sparse ones (ICU-specific tables
+    # in MIMIC-IV, which includes many non-ICU admissions).
     coverage = stats["table_coverage"]
     df_all = pd.DataFrame([{"table": k, "pct": v} for k, v in coverage.items()])
     df_top = df_all.nlargest(10, "pct").sort_values("pct")

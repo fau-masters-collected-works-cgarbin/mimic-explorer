@@ -119,6 +119,12 @@ def _fetch_notes(
 
 
 def _fetch_abnormal_labs(hadm: int, ref: str | None, lab_cols: dict) -> pd.DataFrame:
+    """Fetch only abnormal lab results for timeline overlay.
+
+    The flag column marks abnormal results: "abnormal", "delta" (change from
+    prior), etc. Normal results have an empty string (not NULL) in MIMIC-III,
+    so both NULL and empty-string checks are needed to filter them out.
+    """
     if ref is None:
         return pd.DataFrame()
     c = lab_cols  # short alias for use in the SQL template

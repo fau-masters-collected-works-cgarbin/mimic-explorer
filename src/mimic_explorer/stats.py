@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from mimic_explorer.config import DatasetConfig
 
+# Cache lives at the project root, outside src/. Gitignored so derived stats
+# (which touch patient-level aggregates) never end up in version control.
 CACHE_DIR = Path(__file__).resolve().parents[2] / ".mimic_explorer_cache"
 
 
@@ -96,12 +98,17 @@ def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
     )
     is_mimic3 = cfg.uppercase_filenames
 
+    # ICD join clause differs by version: MIMIC-III has only ICD-9 codes,
+    # so a simple code match suffices. MIMIC-IV has both ICD-9 and ICD-10,
+    # requiring icd_version in the join to avoid cross-version collisions.
     icd_col = cfg.col("icd_code")
     title_col = cfg.col("long_title")
     icd_join = f'd."{icd_col}" = t."{icd_col}"'
     if not is_mimic3:
         icd_join += ' AND d."icd_version" = t."icd_version"'
 
+    # MIMIC-III: single NOTEEVENTS table. MIMIC-IV: separate tables per note
+    # type in the MIMIC-IV-Note module, UNIONed back together here.
     note_ref = refs["noteevents"]
     if not is_mimic3 and note_tables:
         note_ref = note_union_ref(note_tables)
@@ -142,9 +149,15 @@ def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
     return tasks
 
 
+# ---------------------------------------------------------------------------
+# Task builders: volume, coverage, data quality
+# ---------------------------------------------------------------------------
+
+
 def _add_volume_tasks(
     tasks: dict[str, Any], refs: dict, note_ref: str | None, hadm_col: str
 ) -> None:
+    """Per-admission volume: how many notes/labs/meds/procedures per stay."""
     if note_ref:
         tasks["vol_notes"] = lambda: _query_per_admission_volume(note_ref, hadm_col, "Notes")
     if refs["labevents"]:
@@ -166,6 +179,12 @@ def _add_coverage_tasks(
     *,
     cfg: DatasetConfig,
 ) -> None:
+    """Table coverage: what percentage of admissions have at least one record.
+
+    Low coverage means a table is only populated for certain stay types
+    (e.g., ICU-only tables will show low coverage in MIMIC-IV, which
+    includes non-ICU admissions).
+    """
     if not refs["admissions"]:
         return
     adm_ref = refs["admissions"]
@@ -200,6 +219,12 @@ def _add_data_quality_tasks(
     is_mimic3: bool,
     cfg: DatasetConfig,
 ) -> None:
+    """Data quality checks: missing timestamps and empty note text.
+
+    These surface known data issues. MIMIC-III NOTEEVENTS has notes with
+    NULL charttime (date-only entries) and empty text fields. MIMIC-IV-Note
+    cleaned up some of these but still has missing charttimes.
+    """
     if is_mimic3 and refs["noteevents"]:
         tasks["dq_notes_missing_time"] = lambda: _query_dq_null_count(
             refs["noteevents"],
@@ -376,6 +401,15 @@ def _query_race_dist(adm_ref: str, race_col: str) -> list[dict]:
 
 
 def _query_age_dist(pat_ref: str, adm_ref: str, *, is_mimic3: bool) -> list[dict]:
+    """Age distribution differs fundamentally between versions.
+
+    MIMIC-III: age is computed per admission from DOB and ADMITTIME. Ages
+    above 89 are capped at 90 for HIPAA de-identification. A patient
+    admitted at 65 and again at 68 appears in both bins.
+
+    MIMIC-IV: anchor_age is assigned once per patient at a reference year.
+    Actual age at a specific admission may differ from anchor_age.
+    """
     conn = get_connection()
     if is_mimic3:
         df = conn.execute(f"""

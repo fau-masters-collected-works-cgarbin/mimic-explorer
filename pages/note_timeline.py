@@ -30,6 +30,10 @@ if st.session_state.get("_timeline_dataset") != st.session_state["dataset_key"]:
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
+# Resolve table references for all tables used on this page.
+# MIMIC-III has a single NOTEEVENTS table. MIMIC-IV splits notes into separate
+# tables per type in the MIMIC-IV-Note module (a separate PhysioNet download),
+# so we UNION them back together to present a unified view.
 refs = resolve_refs(tables, ["noteevents", "admissions", "labevents", "transfers", "prescriptions"])
 admissions_ref = refs["admissions"]
 
@@ -69,7 +73,9 @@ text_col = dataset.col("text")
 admit_col = dataset.col("admittime")
 disch_col = dataset.col("dischtime")
 
-# Structured event columns grouped by table for use in per-admission queries
+# Structured event columns grouped by table for per-admission queries.
+# Each dict maps a logical name to the version-specific column name so
+# the SQL templates in timeline_queries.py work for both MIMIC versions.
 lab_cols = {
     "charttime": dataset.col("charttime"),
     "flag": dataset.col("flag"),
@@ -99,6 +105,9 @@ note_cols = {
     "charttime_col": charttime_col,
     "chartdate_col": chartdate_col,
     "hadm_col": hadm_col,
+    # MIMIC-III NOTEEVENTS has an ISERROR column marking notes entered in error.
+    # MIMIC-IV-Note removed erroneous notes from the dataset entirely, so no
+    # filter is needed (iserror_col is None).
     "error_filter": (
         f'("{iserror_col}" != \'1\' OR "{iserror_col}" IS NULL)' if iserror_col else None
     ),
@@ -223,7 +232,11 @@ if df_notes.empty:
     st.warning(f"No notes found for HADM_ID = {hadm_id}.")
     st.stop()
 
-# Compute unified timestamp for each note: use CHARTTIME when available, fall back to CHARTDATE
+# Compute unified timestamp for each note.
+# MIMIC-III notes may have charttime (datetime) or only chartdate (date without
+# time). When only chartdate exists, the note appears at midnight, which can
+# place it before the recorded admission time on the same day.
+# MIMIC-IV notes always have charttime, so no fallback is needed.
 if chartdate_col:
     df_notes["timestamp"] = pd.to_datetime(
         df_notes[charttime_col], format="mixed", errors="coerce"
@@ -296,7 +309,9 @@ fig = px.scatter(
     labels={"hours_from_admit": "Hours from Admission", "timeline_label": ""},
 )
 
-# Overlay structured clinical events on the timeline
+# Overlay structured clinical events (labs, transfers, medications) on the
+# same timeline as notes. Each event type gets a distinct marker shape and
+# its own y-axis row so it doesn't overlap with note categories.
 if not df_labs.empty:
     lab_hours = (pd.to_datetime(df_labs["timestamp"]) - admit_ts).dt.total_seconds() / 3600
     fig.add_trace(
@@ -367,8 +382,9 @@ fig.update_layout(
     xaxis_title="Hours from Admission",
     margin={"t": 20, "b": 10},
 )
-# Hide color legend entries for note categories (redundant with y-axis),
-# keep symbol entries and structured event entries
+# Hide color legend entries for note categories (redundant with y-axis labels).
+# Keep structured event entries (labs, transfers, meds) and precision symbols
+# (circle vs diamond) visible, since those aren't labeled on the y-axis.
 for trace in fig.data:
     if hasattr(trace, "marker") and trace.marker.symbol in (None, "circle"):
         trace.showlegend = False
@@ -398,7 +414,8 @@ else:
     intervals = sorted_notes["timestamp"].diff().dt.total_seconds() / 3600
     intervals = intervals.dropna()
 
-    # Position each gap at the second note (when documentation resumed)
+    # Position each gap at the second note (when documentation resumed).
+    # A tall stem means a long silence; short stems indicate bursts of charting.
     hours = sorted_notes["hours_from_admit"].to_numpy()
 
     interval_df = pd.DataFrame(

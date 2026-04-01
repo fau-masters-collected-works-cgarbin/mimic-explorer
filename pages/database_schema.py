@@ -52,6 +52,9 @@ def get_row_count(
 
 
 # -- Group tables by connectivity level --
+# Tables are classified by their highest join key. This mirrors the three-level
+# hierarchy (patient -> admission -> ICU stay) that structures all of MIMIC.
+# Tables without any join key are dictionary/lookup tables.
 
 CORE_TABLES = {"patients", "admissions", "icustays"}
 
@@ -92,6 +95,10 @@ icu_label = "\\n".join(icu_level)
 patient_label = "\\n".join(patient_only)
 dict_label = "\\n".join(no_keys)
 
+# Build a Graphviz DOT diagram showing the join hierarchy. Core tables are
+# colored by level (blue=patient, green=admission, orange=ICU). Clinical
+# tables hang off their highest join level with dashed edges. Dictionary
+# tables connect to their target clinical tables with dotted edges.
 dot = f"""
 digraph MIMIC {{
     rankdir=LR;
@@ -121,7 +128,10 @@ if patient_only:
     patients -> patient_tables [style=dashed, label="subject_id"];
 """
 
-# Dictionary/lookup table relationships: connect to the clinical tables they describe
+# Dictionary/lookup table relationships: map each dictionary table to the
+# clinical table group it describes and the join key used. These differ
+# between versions (e.g., MIMIC-III uses d_cpt/caregivers, MIMIC-IV uses
+# d_hcpcs/caregiver) and have different key column names.
 DICT_LINKS_MIMIC3 = {
     "d_icd_diagnoses": [("admission_tables", "ICD9_CODE")],
     "d_icd_procedures": [("admission_tables", "ICD9_CODE")],

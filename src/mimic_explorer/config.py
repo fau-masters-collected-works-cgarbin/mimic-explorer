@@ -168,7 +168,10 @@ DATASETS: dict[str, DatasetConfig] = {
     ),
 }
 
-# Tables too large to count by default in row count operations
+# Tables too large to count by default in row count operations.
+# DuckDB scans the full CSV.gz to count rows, and these tables have millions
+# of rows (CHARTEVENTS alone has ~330M in MIMIC-III). The schema browser
+# offers an opt-in checkbox for users who want these counts.
 LARGE_TABLES = frozenset(
     {
         "chartevents",
