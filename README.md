@@ -1,10 +1,10 @@
 # MIMIC Explorer
 
-Explore MIMIC-III and MIMIC-IV clinical datasets interactively. Reads CSV.gz files directly with DuckDB. No ETL, no database setup.
+Explore [MIMIC-III](https://physionet.org/content/mimiciii/) and [MIMIC-IV](https://physionet.org/content/mimiciv/) clinical datasets interactively. Reads CSV.gz files directly with DuckDB. No ETL, no database setup.
 
 ## Getting started
 
-You need local copies of the MIMIC CSV.gz files (downloaded from PhysioNet after credentialing).
+You need local copies of the MIMIC CSV.gz files (downloaded from PhysioNet after [credentialing](https://mimic.mit.edu/docs/gettingstarted/)).
 
 Install dependencies and run:
 
@@ -54,7 +54,7 @@ If you're new to MIMIC, work through the pages in order.
 
 The MIMIC ecosystem already has good resources, but they serve different purposes.
 
-**Official documentation** at [mimic.mit.edu](https://mimic.mit.edu/docs/iv/) provides thorough column-level descriptions for each table. It's the authoritative reference, but it's organized as individual pages per table with no cross-table navigation, no visual schema map, and no dataset-level summary statistics.
+**Official documentation** at [mimic.mit.edu](https://mimic.mit.edu/docs/) provides thorough column-level descriptions for each table. It's the authoritative reference, but it's organized as individual pages per table with no cross-table navigation, no visual schema map, and no dataset-level summary statistics.
 
 **mimic-code** ([github.com/MIT-LCP/mimic-code](https://github.com/MIT-LCP/mimic-code)) is the official community repository with PostgreSQL/BigQuery build scripts, derived concept SQL, and tutorial notebooks. It's aimed at researchers who already have a working mental model of the data and need to compute specific clinical concepts.
 

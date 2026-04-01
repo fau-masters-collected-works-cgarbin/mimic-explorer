@@ -15,7 +15,7 @@ st.info(
     "[Google Colab notebook](https://colab.research.google.com/drive/"
     "1REu-ofzNzqsTT1cxLHIegPB0nGmwKaM0). "
     "When you need to look up what a column means, use "
-    "[mimic.mit.edu](https://mimic.mit.edu/docs/iv/). "
+    "[mimic.mit.edu](https://mimic.mit.edu/docs/). "
     "When you're computing a clinical concept (severity scores, sepsis "
     "criteria, ventilation duration), check "
     "[mimic-code](https://github.com/MIT-LCP/mimic-code/tree/main/"
