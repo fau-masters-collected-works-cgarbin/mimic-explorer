@@ -1,7 +1,7 @@
 """Pre-compute and cache all static dataset statistics.
 
 MIMIC datasets are static, so we compute stats once and save to disk as JSON.
-Subsequent loads read from cache for instant startup.
+Subsequent loads read from cache.
 """
 
 from __future__ import annotations
@@ -326,10 +326,16 @@ def _query_overview(cfg: DatasetConfig, tables: dict[str, Path]) -> dict:
     )
     min_admit = scalar_query(conn, f'SELECT min("{admit_col}")::DATE FROM {a}')
     max_admit = scalar_query(conn, f'SELECT max("{admit_col}")::DATE FROM {a}')
-    mortality_pct = scalar_query(conn, f'SELECT round(100.0 * avg("{death_col}"), 1) FROM {a}')
+    mortality_pct = scalar_query(
+        conn,
+        # hospital_expire_flag is 0 or 1, so avg() gives the fraction directly
+        f'SELECT round(100.0 * avg("{death_col}"), 1) FROM {a}',
+    )
     median_los = scalar_query(
         conn,
         f"""SELECT round(median(
+            -- hours / 24 instead of date_diff('day'), which truncates
+            -- (a 36-hour stay would show as 1 day instead of 1.5)
             date_diff('hour', "{admit_col}"::TIMESTAMP, "{disch_col}"::TIMESTAMP) / 24.0
         ), 1) FROM {a}""",
     )
@@ -434,6 +440,7 @@ def _query_age_dist(pat_ref: str, adm_ref: str, *, is_mimic3: bool) -> list[dict
     if is_mimic3:
         df = conn.execute(f"""
             SELECT
+                -- Cap at 90: patients >89 have DOB shifted for HIPAA de-identification
                 LEAST(
                     date_diff('year', "DOB"::TIMESTAMP, "ADMITTIME"::TIMESTAMP),
                     90
@@ -443,6 +450,7 @@ def _query_age_dist(pat_ref: str, adm_ref: str, *, is_mimic3: bool) -> list[dict
         """).fetchdf()
     else:
         df = conn.execute(f"""
+            -- anchor_age is assigned once per patient, not per admission
             SELECT "anchor_age" AS age
             FROM {pat_ref}
         """).fetchdf()
@@ -451,9 +459,6 @@ def _query_age_dist(pat_ref: str, adm_ref: str, *, is_mimic3: bool) -> list[dict
 
 def _query_los_dist(adm_ref: str, admit_col: str, disch_col: str) -> list[dict]:
     """How long are patients hospitalized?"""
-    # Compute LOS as hours / 24 instead of date_diff('day') to preserve
-    # fractional days. date_diff('day') truncates, so a 36-hour stay would
-    # show as 1 day instead of 1.5.
     conn = get_connection()
     df = conn.execute(f"""
         SELECT
@@ -470,9 +475,8 @@ def _query_los_dist(adm_ref: str, admit_col: str, disch_col: str) -> list[dict]:
 def _query_per_admission_volume(tbl_ref: str, hadm_col: str, label: str) -> tuple[str, dict]:
     """How much data is generated per hospital admission?
 
-    Reports median, IQR, and max record counts per admission. Useful for
-    setting expectations about data density (e.g., a typical admission has
-    ~15 notes in MIMIC-III but hundreds of lab results).
+    Reports median, IQR, and max record counts per admission. A typical
+    MIMIC-III admission has ~15 notes but hundreds of lab results.
     """
     conn = get_connection()
     row = conn.execute(f"""
@@ -482,6 +486,7 @@ def _query_per_admission_volume(tbl_ref: str, hadm_col: str, label: str) -> tupl
             quantile_cont(cnt, 0.75)::INT AS p75,
             max(cnt)::INT AS max
         FROM (
+            -- Per-admission record counts
             SELECT "{hadm_col}", count(*) AS cnt
             FROM {tbl_ref}
             WHERE "{hadm_col}" IS NOT NULL
@@ -499,14 +504,14 @@ def _query_coverage(
     """What fraction of admissions have at least one record in this table?
 
     Uses a LEFT JOIN from admissions to count distinct hadm_ids that appear
-    in the target table. NULLIF guards against division by zero if the
-    admissions table is somehow empty.
+    in the target table.
     """
     conn = get_connection()
     pct = scalar_query(
         conn,
         f"""
         SELECT round(100.0 * count(DISTINCT t."{hadm_col}") /
+               -- NULLIF: guard against division by zero if admissions is empty
                NULLIF(count(DISTINCT a."{hadm_col}"), 0), 1)
         FROM {adm_ref} a
         LEFT JOIN {tbl_ref} t ON a."{hadm_col}" = t."{hadm_col}"
