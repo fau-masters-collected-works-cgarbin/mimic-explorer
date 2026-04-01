@@ -21,4 +21,4 @@ repos:
       - id: check-merge-conflict
       # Prevent accidental commits of MIMIC data files or other large artifacts
       - id: check-added-large-files
-        args: ['--maxkb=500']
+        args: ['--maxkb=100']
