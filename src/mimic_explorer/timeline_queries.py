@@ -14,7 +14,10 @@ from mimic_explorer.db import get_connection
 def fetch_category_counts(
     noteevents_ref: str, category_col: str, error_filter: str | None
 ) -> pd.DataFrame:
-    """Count notes by category across the entire dataset."""
+    """What types of clinical notes exist and how common is each?
+
+    Answers this at the dataset level (all admissions), not per admission.
+    """
     conn = get_connection()
     where = f"WHERE {error_filter}" if error_filter else ""
     return conn.execute(f"""

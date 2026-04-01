@@ -18,6 +18,9 @@ ICU_KEY = dataset.col("icu_key")
 
 
 # -- Scan schema --
+# What columns does each table have, and which join keys are present?
+# This drives the entire page: table grouping, the ER diagram, and the
+# per-table detail expanders.
 
 
 @st.cache_data(show_spinner="Scanning schema...")

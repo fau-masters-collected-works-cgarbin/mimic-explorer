@@ -405,6 +405,10 @@ if is_mimic3:
 st.caption(" ".join(caption_parts))
 
 # ── Section 3: Note-to-note intervals ──
+# How evenly is clinical documentation distributed across the stay?
+# Clusters of short intervals suggest active clinical events (procedures,
+# deterioration). Long gaps often align with overnight periods, weekends,
+# or stable patients who need less frequent documentation.
 
 if len(df_notes) < 3:
     st.caption(

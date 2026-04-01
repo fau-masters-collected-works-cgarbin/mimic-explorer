@@ -357,6 +357,11 @@ def _query_overview(cfg: DatasetConfig, tables: dict[str, Path]) -> dict:
 def _query_top_coded(
     fact_ref: str, dict_ref: str, join_clause: str, title_col: str, label: str
 ) -> list[dict]:
+    """What are the most common diagnoses or procedures?
+
+    Joins the fact table (diagnoses_icd, procedures_icd) against its dictionary
+    table to resolve opaque ICD codes into human-readable descriptions.
+    """
     conn = get_connection()
     df = conn.execute(f"""
         SELECT d."{title_col}" AS {label}, count(*) AS count
@@ -370,6 +375,10 @@ def _query_top_coded(
 
 
 def _query_top_labs(lab_ref: str, dlab_ref: str, item_col: str, lbl_col: str) -> list[dict]:
+    """Which lab tests are ordered most frequently?
+
+    Joins labevents against d_labitems to get test names from item IDs.
+    """
     conn = get_connection()
     # No sampling: scan the full table for exact counts
     df = conn.execute(f"""
@@ -384,6 +393,7 @@ def _query_top_labs(lab_ref: str, dlab_ref: str, item_col: str, lbl_col: str) ->
 
 
 def _query_gender_dist(pat_ref: str, gender_col: str) -> list[dict]:
+    """What is the gender breakdown of the patient population?"""
     conn = get_connection()
     df = conn.execute(f"""
         SELECT "{gender_col}" AS gender, count(*) AS count
@@ -395,6 +405,7 @@ def _query_gender_dist(pat_ref: str, gender_col: str) -> list[dict]:
 
 
 def _query_race_dist(adm_ref: str, race_col: str) -> list[dict]:
+    """What is the race/ethnicity distribution across admissions?"""
     conn = get_connection()
     # MIMIC has 40+ race/ethnicity categories (many with small counts).
     # Top 15 covers the meaningful groups; the rest are shown as a pie chart
@@ -439,6 +450,7 @@ def _query_age_dist(pat_ref: str, adm_ref: str, *, is_mimic3: bool) -> list[dict
 
 
 def _query_los_dist(adm_ref: str, admit_col: str, disch_col: str) -> list[dict]:
+    """How long are patients hospitalized?"""
     # Compute LOS as hours / 24 instead of date_diff('day') to preserve
     # fractional days. date_diff('day') truncates, so a 36-hour stay would
     # show as 1 day instead of 1.5.
@@ -456,6 +468,12 @@ def _query_los_dist(adm_ref: str, admit_col: str, disch_col: str) -> list[dict]:
 
 
 def _query_per_admission_volume(tbl_ref: str, hadm_col: str, label: str) -> tuple[str, dict]:
+    """How much data is generated per hospital admission?
+
+    Reports median, IQR, and max record counts per admission. Useful for
+    setting expectations about data density (e.g., a typical admission has
+    ~15 notes in MIMIC-III but hundreds of lab results).
+    """
     conn = get_connection()
     row = conn.execute(f"""
         SELECT
@@ -478,6 +496,12 @@ def _query_per_admission_volume(tbl_ref: str, hadm_col: str, label: str) -> tupl
 def _query_coverage(
     adm_ref: str, tbl_ref: str, hadm_col: str, table_name: str
 ) -> tuple[str, float]:
+    """What fraction of admissions have at least one record in this table?
+
+    Uses a LEFT JOIN from admissions to count distinct hadm_ids that appear
+    in the target table. NULLIF guards against division by zero if the
+    admissions table is somehow empty.
+    """
     conn = get_connection()
     pct = scalar_query(
         conn,
@@ -492,6 +516,7 @@ def _query_coverage(
 
 
 def _query_dq_null_count(tbl_ref: str, col: str, check_name: str) -> dict:
+    """How many records are missing a value in the given column?"""
     conn = get_connection()
     total = scalar_query(conn, f"SELECT count(*) FROM {tbl_ref}")
     null_count = scalar_query(conn, f'SELECT count(*) FROM {tbl_ref} WHERE "{col}" IS NULL')
@@ -500,6 +525,7 @@ def _query_dq_null_count(tbl_ref: str, col: str, check_name: str) -> dict:
 
 
 def _query_dq_empty_text(tbl_ref: str, text_col: str, check_name: str) -> dict:
+    """How many notes have NULL or whitespace-only text?"""
     conn = get_connection()
     total = scalar_query(conn, f"SELECT count(*) FROM {tbl_ref}")
     empty_count = scalar_query(

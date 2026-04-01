@@ -24,6 +24,10 @@ st.markdown(
 )
 
 # -- Demographics --
+# Who are the patients in this dataset? Gender is at the patient level
+# (one value per person). Race/ethnicity is at the admission level because
+# MIMIC records it per admission and some patients have different values
+# across admissions (data entry variability, not actual changes).
 
 st.subheader("Demographics")
 
@@ -101,6 +105,9 @@ if "los_dist" in stats:
     st.caption(los_note)
 
 # -- Per-admission volume --
+# How much data is generated per hospital admission? This helps set
+# expectations for downstream analysis (e.g., "a typical admission has
+# ~15 notes but hundreds of lab results").
 
 if "per_admission_volume" in stats:
     st.subheader("Per-Admission Volume")
@@ -118,6 +125,8 @@ if "per_admission_volume" in stats:
     st.dataframe(pd.DataFrame(rows), hide_index=True, width=600)
 
 # -- Top diagnoses, procedures, labs (side by side) --
+# What are the most common diagnoses, procedures, and lab tests?
+# Codes are joined against dictionary tables to show human-readable names.
 
 _top_n = 10
 _top_sections = [
@@ -185,6 +194,8 @@ if "table_coverage" in stats:
             st.plotly_chart(fig, width="stretch")
 
 # -- Data quality --
+# How complete and reliable is the data? Surfaces known issues like
+# missing timestamps and empty note text that could affect downstream analysis.
 
 if "data_quality" in stats:
     st.subheader("Data Quality Checks")
