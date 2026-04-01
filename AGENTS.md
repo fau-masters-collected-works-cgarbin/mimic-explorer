@@ -4,6 +4,12 @@
 
 Streamlit database explorer for MIMIC-III and MIMIC-IV clinical datasets. Uses DuckDB to query CSV.gz files directly (no ETL, no database). The goal is to understand the data before building experiments.
 
+## Design philosophy
+
+The tool exists to orient newcomers to MIMIC before they write their first query. Pages should answer "what is in this dataset?" before "how do I query it?". Someone who has never seen MIMIC should be able to open the app, click through the pages, and walk away understanding the patient population, the table structure, and how clinical events relate to each other over time.
+
+Pre-computed stats power the overview pages (fast startup, no waiting on first load after caching). Per-admission exploration uses live queries (flexibility to investigate any admission without pre-computing all of them). Both MIMIC-III and MIMIC-IV should feel the same to the user despite structural differences underneath (column casing, separate note modules, ICD versioning). Version-specific logic lives in the data layer, not in the pages.
+
 ## Architecture
 
 - `app.py`: Streamlit entry point, dataset selector sidebar, page navigation. UI only.
