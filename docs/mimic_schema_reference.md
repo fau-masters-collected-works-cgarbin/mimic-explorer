@@ -21,6 +21,19 @@ Use this instead of looking up columns at runtime when writing version-aware cod
 | Clinical notes | NOTEEVENTS | Not in base MIMIC-IV; separate MIMIC-IV-Note module (discharge.csv.gz + radiology.csv.gz) |
 | ROW_ID column | Present in all tables | Removed |
 
+## Core MIMIC tables
+
+MIMIC has 50+ tables. These six appear in nearly every analysis.
+
+- **patients** contains one row per patient. MIMIC-III stores date of birth (DOB) for age computation; MIMIC-IV provides anchor_age directly.
+- **admissions** contains one row per hospital admission: admit/discharge times, mortality flag, insurance, race/ethnicity. Most analyses start by filtering admissions.
+- **icustays** contains one row per ICU stay: care unit, length of stay. One admission can have multiple ICU stays. The stay identifier is ICUSTAY_ID in MIMIC-III, stay_id in MIMIC-IV.
+- **diagnoses_icd** links ICD diagnosis codes to admissions. MIMIC-III has ICD-9 only; MIMIC-IV has both ICD-9 and ICD-10 (distinguished by an icd_version column). Join against **d_icd_diagnoses** to get human-readable names.
+- **labevents** contains individual lab measurements (one row per test result). Join against **d_labitems** to get test names from item IDs.
+- **noteevents** (MIMIC-III) or **discharge**/**radiology** (MIMIC-IV-Note, a separate PhysioNet module) contains free-text clinical notes: discharge summaries, radiology reports, nursing notes.
+
+Everything else (prescriptions, transfers, chart events, procedures, microbiology) builds on these tables. The full column listings below cover all tables.
+
 ## Join key hierarchy
 
 `subject_id` (patient) → `hadm_id` (hospital admission) → `icustay_id`/`stay_id` (ICU stay)

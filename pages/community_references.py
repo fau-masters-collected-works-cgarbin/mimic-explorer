@@ -9,10 +9,23 @@ st.markdown(
     "your work. This page points you to the right one for what you need."
 )
 
+st.info(
+    "**Where to start.** "
+    "For hands-on practice, open the "
+    "[Google Colab notebook](https://colab.research.google.com/drive/"
+    "1REu-ofzNzqsTT1cxLHIegPB0nGmwKaM0). "
+    "When you need to look up what a column means, use "
+    "[mimic.mit.edu](https://mimic.mit.edu/docs/iv/). "
+    "When you're computing a clinical concept (severity scores, sepsis "
+    "criteria, ventilation duration), check "
+    "[mimic-code](https://github.com/MIT-LCP/mimic-code/tree/main/"
+    "mimic-iv/concepts) before writing your own SQL."
+)
+
 st.subheader("Official Documentation")
 
 st.markdown("""
-[mimic.mit.edu](https://mimic.mit.edu/docs/iv/) is the authoritative
+[mimic.mit.edu](https://mimic.mit.edu/docs/) is the authoritative
 reference for both MIMIC-III and MIMIC-IV. Each table has its own page
 with column names, types, and descriptions. Start here when you need to
 understand what a specific column means or what values it can take.
