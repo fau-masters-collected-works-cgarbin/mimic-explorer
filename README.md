@@ -67,3 +67,7 @@ The MIMIC ecosystem already has good resources, but they serve different purpose
 **What this tool adds**: dataset-level statistics with clinical context, interactive exploration of CSV.gz files with no database setup, and support for both MIMIC-III and MIMIC-IV. SchemaSpy's FK diagrams are more detailed for schema relationships specifically.
 
 </details>
+
+## AI Disclosure
+
+I used a coding agent (Claude Code with Opus) in this work. I reviewed its output and am responsible for the result.
