@@ -4,11 +4,6 @@ import streamlit as st
 
 st.title("Community References")
 
-st.markdown(
-    "The MIMIC ecosystem has established resources for different stages of "
-    "your work. This page points you to the right one for what you need."
-)
-
 st.info(
     "**Where to start.** "
     "For hands-on practice, open the "

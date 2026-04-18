@@ -107,9 +107,7 @@ note_cols = {
 error_filter = note_cols["error_filter"]
 
 st.markdown(
-    "Clinical notes and structured events across a hospital stay: "
-    "where documentation clusters, where gaps appear, and how notes "
-    "relate to lab results, unit transfers, and medication changes."
+    "Clinical notes alongside abnormal labs, unit transfers, and medication starts on one timeline."
 )
 
 # ── Section 1: Category Distribution ──

@@ -21,10 +21,6 @@ if not metrics:
 
 # -- Display --
 
-st.markdown(
-    "These numbers give you the shape of the dataset before you dive into individual tables."
-)
-
 # Row 1: Population
 col1, col2, col3 = st.columns(3)
 col1.metric("Patients", f"{metrics['total_patients']:,}")

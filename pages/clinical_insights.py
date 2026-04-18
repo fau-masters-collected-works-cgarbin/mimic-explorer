@@ -18,9 +18,8 @@ if not stats:
     st.stop()
 
 st.markdown(
-    "Pre-built queries that reveal the shape of the data. "
-    "All codes are joined against dictionary tables so you see "
-    "names, not opaque IDs."
+    "Diagnosis, procedure, and lab codes are joined to dictionary "
+    "tables so the charts show names, not numeric IDs."
 )
 
 # -- Demographics --

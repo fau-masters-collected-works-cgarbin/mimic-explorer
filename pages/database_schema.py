@@ -90,7 +90,7 @@ st.subheader("How tables connect")
 
 st.markdown(f"""
 {dataset.name} is organized around a three-level hierarchy. Every table connects to at least one of
-these identifiers, and understanding this hierarchy is the key to joining tables correctly.
+these identifiers.
 
 - **`subject_id`** identifies a unique patient. Every clinical table has this.
 - **`hadm_id`** identifies a single hospital admission. One patient can have multiple admissions.
