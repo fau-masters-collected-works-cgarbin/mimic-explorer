@@ -250,7 +250,13 @@ def _add_data_quality_tasks(
 
 
 def _assemble_stats(results: dict[str, Any]) -> dict[str, Any]:
-    """Combine parallel query results into the final stats dict."""
+    """Combine parallel query results into the final stats dict.
+
+    The shape of this dict is the on-disk cache contract. If you add,
+    rename, or restructure any key here, existing cached JSON files in
+    .mimic_explorer_cache/ will be stale -- delete them or click
+    "Recalculate statistics" in the sidebar to rebuild.
+    """
     out: dict[str, Any] = {}
     out["overview"] = results.get("overview", {})
 
