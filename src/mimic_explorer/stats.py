@@ -14,7 +14,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mimic_explorer.db import get_connection, note_union_ref, resolve_refs, scalar_query, table_ref
+from mimic_explorer.db import (
+    get_connection,
+    resolve_note_ref,
+    resolve_refs,
+    scalar_query,
+    table_ref,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +84,6 @@ def compute_stats(cfg: DatasetConfig) -> dict:
 def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
     """Build the dict of named tasks (callables) for parallel execution."""
     tables = cfg.find_tables()
-    note_tables = cfg.find_note_tables()
     refs = resolve_refs(
         tables,
         [
@@ -93,7 +98,6 @@ def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
             "labevents",
             "prescriptions",
             "transfers",
-            "noteevents",
         ],
     )
     is_mimic3 = cfg.uppercase_filenames
@@ -107,11 +111,7 @@ def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
     if not is_mimic3:
         icd_join += ' AND d."icd_version" = t."icd_version"'
 
-    # MIMIC-III: single NOTEEVENTS table. MIMIC-IV: separate tables per note
-    # type in the MIMIC-IV-Note module, UNIONed back together here.
-    note_ref = refs["noteevents"]
-    if not is_mimic3 and note_tables:
-        note_ref = note_union_ref(note_tables)
+    note_ref = resolve_note_ref(cfg)
 
     tasks: dict[str, Any] = {}
     tasks["overview"] = lambda: _query_overview(cfg, tables)
@@ -144,7 +144,7 @@ def _build_tasks(cfg: DatasetConfig) -> dict[str, Any]:
     hadm_col = cfg.col("hadm_id")
     _add_volume_tasks(tasks, refs, note_ref, hadm_col)
     _add_coverage_tasks(tasks, refs, note_ref, cfg=cfg)
-    _add_data_quality_tasks(tasks, refs, note_ref, is_mimic3=is_mimic3, cfg=cfg)
+    _add_data_quality_tasks(tasks, refs, note_ref, cfg=cfg)
 
     return tasks
 
@@ -216,7 +216,6 @@ def _add_data_quality_tasks(
     refs: dict,
     note_ref: str | None,
     *,
-    is_mimic3: bool,
     cfg: DatasetConfig,
 ) -> None:
     """Data quality checks: missing timestamps and empty note text.
@@ -225,20 +224,13 @@ def _add_data_quality_tasks(
     NULL charttime (date-only entries) and empty text fields. MIMIC-IV-Note
     cleaned up some of these but still has missing charttimes.
     """
-    if is_mimic3 and refs["noteevents"]:
+    if note_ref:
         tasks["dq_notes_missing_time"] = lambda: _query_dq_null_count(
-            refs["noteevents"],
-            cfg.col("charttime"),
-            "Notes with missing timestamps",
+            note_ref, cfg.col("charttime"), "Notes with missing timestamps"
         )
         tasks["dq_notes_empty"] = lambda: _query_dq_empty_text(
-            refs["noteevents"], cfg.col("text"), "Empty notes"
+            note_ref, cfg.col("text"), "Empty notes"
         )
-    elif note_ref and not is_mimic3:
-        tasks["dq_notes_missing_time"] = lambda: _query_dq_null_count(
-            note_ref, "charttime", "Notes with missing timestamps"
-        )
-        tasks["dq_notes_empty"] = lambda: _query_dq_empty_text(note_ref, "text", "Empty notes")
     if refs["labevents"]:
         tasks["dq_labs_missing_time"] = lambda: _query_dq_null_count(
             refs["labevents"], cfg.col("charttime"), "Labs with missing timestamps"

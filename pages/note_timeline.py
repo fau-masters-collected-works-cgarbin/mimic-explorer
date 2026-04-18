@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from mimic_explorer.config import DATASETS
-from mimic_explorer.db import note_union_ref, resolve_refs
+from mimic_explorer.db import resolve_note_ref, resolve_refs
 from mimic_explorer.timeline_queries import (
     fetch_admission_bounds,
     fetch_admission_data,
@@ -31,17 +31,9 @@ tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
 # Resolve table references for all tables used on this page.
-# MIMIC-III has a single NOTEEVENTS table. MIMIC-IV splits notes into separate
-# tables per type in the MIMIC-IV-Note module (a separate PhysioNet download),
-# so we UNION them back together to present a unified view.
-refs = resolve_refs(tables, ["noteevents", "admissions", "labevents", "transfers", "prescriptions"])
+refs = resolve_refs(tables, ["admissions", "labevents", "transfers", "prescriptions"])
 admissions_ref = refs["admissions"]
-
-if is_mimic3:
-    noteevents_ref = refs["noteevents"]
-else:
-    note_tables = dataset.find_note_tables()
-    noteevents_ref = note_union_ref(note_tables)
+noteevents_ref = resolve_note_ref(dataset)
 
 if not noteevents_ref:
     if is_mimic3:

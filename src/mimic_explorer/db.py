@@ -9,6 +9,8 @@ import duckdb
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from mimic_explorer.config import DatasetConfig
+
 
 def get_connection() -> duckdb.DuckDBPyConnection:
     """Return a fresh DuckDB in-memory connection.
@@ -89,6 +91,21 @@ def note_union_ref(note_tables: dict[str, Path]) -> str | None:
         return None
     union = " UNION ALL ".join(selects)
     return f"({union}) AS noteevents"
+
+
+def resolve_note_ref(cfg: DatasetConfig) -> str | None:
+    """Return a SQL reference for the unified notes view, or None if unavailable.
+
+    MIMIC-III stores notes in a single NOTEEVENTS table inside the main dataset.
+    MIMIC-IV moved notes to the separate MIMIC-IV-Note module, split across
+    discharge and radiology tables, which this function UNIONs back together so
+    callers can treat both versions uniformly.
+    """
+    if cfg.uppercase_filenames:
+        path = cfg.find_tables().get("noteevents")
+        return table_ref(path) if path else None
+    note_tables = cfg.find_note_tables()
+    return note_union_ref(note_tables) if note_tables else None
 
 
 def scalar_query(conn: duckdb.DuckDBPyConnection, sql: str) -> object:

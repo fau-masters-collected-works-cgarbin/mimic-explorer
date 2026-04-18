@@ -2,10 +2,12 @@
 
 from pathlib import Path
 
+from mimic_explorer.config import DatasetConfig
 from mimic_explorer.db import (
     column_info,
     get_connection,
     note_union_ref,
+    resolve_note_ref,
     resolve_refs,
     row_count,
     scalar_query,
@@ -64,8 +66,6 @@ def test_note_union_ref_returns_none_for_empty():
 
 
 def test_note_union_ref_query(mimic4_note_layout):
-    from mimic_explorer.config import DatasetConfig  # noqa: PLC0415
-
     config = DatasetConfig(name="test", base_path=mimic4_note_layout, note_path=mimic4_note_layout)
     note_tables = config.find_note_tables()
     ref = note_union_ref(note_tables)
@@ -78,3 +78,57 @@ def test_note_union_ref_query(mimic4_note_layout):
     categories = set(result["category"])
     assert "Discharge summary" in categories
     assert "Radiology" in categories
+
+
+def test_resolve_note_ref_mimic3_with_noteevents(mimic3_layout):
+    import gzip  # noqa: PLC0415
+
+    noteevents = (
+        "ROW_ID,SUBJECT_ID,HADM_ID,CHARTTIME,CATEGORY,TEXT\n"
+        "1,1,100,2150-01-01 12:00:00,Discharge summary,note text\n"
+    )
+    with gzip.open(mimic3_layout / "NOTEEVENTS.csv.gz", "wt") as f:
+        f.write(noteevents)
+
+    cfg = DatasetConfig(name="m3", base_path=mimic3_layout, uppercase_filenames=True)
+    ref = resolve_note_ref(cfg)
+    assert ref is not None
+    assert "NOTEEVENTS.csv.gz" in ref
+    assert "read_csv_auto" in ref
+
+
+def test_resolve_note_ref_mimic3_without_noteevents(mimic3_layout):
+    cfg = DatasetConfig(name="m3", base_path=mimic3_layout, uppercase_filenames=True)
+    assert resolve_note_ref(cfg) is None
+
+
+def test_resolve_note_ref_mimic4_with_note_module(mimic4_layout, mimic4_note_layout):
+    cfg = DatasetConfig(
+        name="m4",
+        base_path=mimic4_layout,
+        subdirs=("hosp", "icu"),
+        note_path=mimic4_note_layout,
+    )
+    ref = resolve_note_ref(cfg)
+    assert ref is not None
+
+    conn = get_connection()
+    result = conn.execute(f"SELECT category, COUNT(*) AS n FROM {ref} GROUP BY category").fetchdf()
+    assert set(result["category"]) == {"Discharge summary", "Radiology"}
+
+
+def test_resolve_note_ref_mimic4_without_note_module(mimic4_layout):
+    cfg = DatasetConfig(name="m4", base_path=mimic4_layout, subdirs=("hosp", "icu"))
+    assert resolve_note_ref(cfg) is None
+
+
+def test_resolve_note_ref_mimic4_empty_note_path(mimic4_layout, tmp_path):
+    empty_note_dir = tmp_path / "empty-notes"
+    empty_note_dir.mkdir()
+    cfg = DatasetConfig(
+        name="m4",
+        base_path=mimic4_layout,
+        subdirs=("hosp", "icu"),
+        note_path=empty_note_dir,
+    )
+    assert resolve_note_ref(cfg) is None
