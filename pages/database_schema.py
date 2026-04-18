@@ -26,17 +26,20 @@ ICU_KEY = dataset.col("icu_key")
 @st.cache_data(show_spinner="Scanning schema...")
 def scan_schema(dataset_name: str, tables_map: dict[str, str]):
     """For each table, detect join keys and read column details."""
+    # dataset.col() returns the right casing for this version (e.g. SUBJECT_ID
+    # for MIMIC-III, subject_id for MIMIC-IV), so no per-page normalization.
+    subject_col = dataset.col("subject_id")
+    hadm_col = dataset.col("hadm_id")
+    icu_col = dataset.col("icu_key")
     conn = get_connection()
     result = {}
     for table_name, file_path in sorted(tables_map.items()):
         cols = column_info(conn, Path(file_path))
-        # Lowercase for comparison: MIMIC-III uses UPPERCASE column names
-        # (e.g. SUBJECT_ID), MIMIC-IV uses lowercase (subject_id).
-        col_names_lower = {c["name"].lower() for c in cols}
+        col_names = {c["name"] for c in cols}
         result[table_name] = {
-            "subject_id": "subject_id" in col_names_lower,
-            "hadm_id": "hadm_id" in col_names_lower,
-            "icu_key": ICU_KEY.lower() in col_names_lower,
+            "subject_id": subject_col in col_names,
+            "hadm_id": hadm_col in col_names,
+            "icu_key": icu_col in col_names,
             "columns": cols,
         }
     return result
