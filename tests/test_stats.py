@@ -214,9 +214,12 @@ class TestComputeStats:
         assert coverage["diagnoses_icd"] == pytest.approx(75.0)
         # prescriptions: 2 of 4 admissions
         assert coverage["prescriptions"] == pytest.approx(50.0)
-        # All tables with hadm_id should be discovered dynamically
         assert "labevents" in coverage
         assert "transfers" in coverage
+        # Notes are reported under a unified "notes" label for both versions,
+        # not under the version-specific table name (e.g. "noteevents").
+        assert "notes" in coverage
+        assert "noteevents" not in coverage
 
     def test_data_quality(self, mimic3_dataset):
         result = compute_stats(mimic3_dataset)

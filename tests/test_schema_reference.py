@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from mimic_explorer.config import DATASETS
+from mimic_explorer.config import DATASETS, HADM_TABLES
 from mimic_explorer.db import column_info, get_connection
 
 SCHEMA_DOC = Path(__file__).parent.parent / "docs" / "mimic_schema_reference.md"
@@ -76,6 +76,34 @@ def _compare(documented: dict[str, set[str]], actual: dict[str, set[str]]) -> li
         if extra_in_doc:
             errors.append(f"  {table_name}: documented but not in file: {sorted(extra_in_doc)}")
     return errors
+
+
+def test_hadm_tables_matches_schema_doc():
+    """HADM_TABLES must match the union of hadm_id-bearing tables in the doc.
+
+    No MIMIC data needed -- this parses the schema reference and compares to
+    the constant. Catches drift in either direction (doc updated but constant
+    stale, or constant updated but doc stale).
+    """
+    text = SCHEMA_DOC.read_text()
+    documented_with_hadm: set[str] = set()
+    for start, stops in [
+        (_SECTION_MIMIC4, [_SECTION_MIMIC4_NOTE, _SECTION_MIMIC3]),
+        (_SECTION_MIMIC4_NOTE, [_SECTION_MIMIC3]),
+        (_SECTION_MIMIC3, []),
+    ]:
+        for table_name, columns in _parse_section(text, start, stops).items():
+            if "hadm_id" in columns:
+                documented_with_hadm.add(table_name)
+
+    missing_from_constant = documented_with_hadm - HADM_TABLES
+    extra_in_constant = HADM_TABLES - documented_with_hadm
+    errors = []
+    if missing_from_constant:
+        errors.append(f"In doc but missing from HADM_TABLES: {sorted(missing_from_constant)}")
+    if extra_in_constant:
+        errors.append(f"In HADM_TABLES but not in doc: {sorted(extra_in_constant)}")
+    assert not errors, "HADM_TABLES drift:\n" + "\n".join(errors)
 
 
 @pytest.mark.schema

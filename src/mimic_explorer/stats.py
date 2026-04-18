@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mimic_explorer.config import HADM_TABLES
 from mimic_explorer.db import (
     get_connection,
     resolve_note_ref,
@@ -190,19 +191,30 @@ def _add_coverage_tasks(
     adm_ref = refs["admissions"]
     hadm_col = cfg.col("hadm_id")
 
-    # Discover all tables that have a hadm_id column
+    # Build the list of tables to compute coverage for. Two filters:
+    # 1. Must be on disk. The user may have downloaded a partial dataset
+    #    (e.g. MIMIC-IV without the ICU module).
+    # 2. Must have a hadm_id column. Coverage is "what fraction of
+    #    admissions have at least one row in this table", which requires
+    #    a join on hadm_id. HADM_TABLES is a static list from the schema
+    #    reference, used to avoid opening each CSV.gz at runtime just to
+    #    inspect its columns.
+    # Skip admissions (don't count it against itself) and noteevents (only
+    # present in MIMIC-III, and covered by the note_ref branch below so
+    # both versions show the same "notes" label).
     tables = cfg.find_tables()
-    conn = get_connection()
     coverage_tables: dict[str, str] = {}
-    for tname, tpath in tables.items():
-        if tname == "admissions":
+    for name, path in tables.items():
+        if name in ("admissions", "noteevents"):
             continue
-        cols = {c[0] for c in conn.execute(f"SELECT * FROM {table_ref(tpath)} LIMIT 0").description}
-        if hadm_col in cols:
-            coverage_tables[tname] = table_ref(tpath)
+        if name not in HADM_TABLES:
+            continue
+        coverage_tables[name] = table_ref(path)
 
-    # Add MIMIC-IV-Note tables (not in the main table list)
-    if not cfg.uppercase_filenames and note_ref:
+    # MIMIC-III has a single NOTEEVENTS table. MIMIC-IV splits notes into
+    # discharge + radiology in the MIMIC-IV-Note module, UNIONed by
+    # resolve_note_ref. Both versions report under one "notes" label.
+    if note_ref:
         coverage_tables["notes"] = note_ref
 
     for tname, tref in coverage_tables.items():

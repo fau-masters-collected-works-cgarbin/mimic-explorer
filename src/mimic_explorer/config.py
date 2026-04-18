@@ -184,3 +184,45 @@ LARGE_TABLES = frozenset(
         "radiology",
     }
 )
+
+# Tables (across both MIMIC versions) that have a hadm_id column, sourced from
+# docs/mimic_schema_reference.md. Used by the table-coverage stats: intersect
+# with the on-disk table list to skip the runtime column-probing that would
+# otherwise be needed. The schema reference is the source of truth -- a test
+# in tests/test_schema_reference.py verifies this set matches the doc.
+HADM_TABLES = frozenset(
+    {
+        # Shared between MIMIC-III and MIMIC-IV
+        "admissions",
+        "icustays",
+        "diagnoses_icd",
+        "procedures_icd",
+        "labevents",
+        "prescriptions",
+        "microbiologyevents",
+        "transfers",
+        "services",
+        "drgcodes",
+        "chartevents",
+        "outputevents",
+        "datetimeevents",
+        # MIMIC-III only
+        "noteevents",
+        "inputevents_cv",
+        "inputevents_mv",
+        "procedureevents_mv",
+        "callout",
+        "cptevents",
+        # MIMIC-IV only
+        "emar",
+        "pharmacy",
+        "poe",
+        "hcpcsevents",
+        "inputevents",
+        "procedureevents",
+        "ingredientevents",
+        # MIMIC-IV-Note (live under note_path, not the main dataset directory)
+        "discharge",
+        "radiology",
+    }
+)
