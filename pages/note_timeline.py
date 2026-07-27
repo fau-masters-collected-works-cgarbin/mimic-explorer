@@ -30,7 +30,6 @@ if st.session_state.get("_timeline_dataset") != st.session_state["dataset_key"]:
 tables = dataset.find_tables()
 is_mimic3 = dataset.uppercase_filenames
 
-# Resolve table references for all tables used on this page.
 refs = resolve_refs(tables, ["admissions", "labevents", "transfers", "prescriptions"])
 admissions_ref = refs["admissions"]
 noteevents_ref = resolve_note_ref(dataset)
@@ -66,8 +65,7 @@ admit_col = dataset.col("admittime")
 disch_col = dataset.col("dischtime")
 
 # Structured event columns grouped by table for per-admission queries.
-# Each dict maps a logical name to the version-specific column name so
-# the SQL templates in timeline_queries.py work for both MIMIC versions.
+# Each dict maps a logical name to the version-specific column name.
 lab_cols = {
     "charttime": dataset.col("charttime"),
     "flag": dataset.col("flag"),
@@ -89,7 +87,7 @@ rx_cols = {
     "hadm": dataset.col("hadm_id"),
 }
 
-# Parameters for _fetch_notes (passed via fetch_admission_data)
+# Note-query column names, keyed by role.
 note_cols = {
     "row_id_col": row_id_col,
     "category_col": category_col,
@@ -239,12 +237,10 @@ else:
     df_notes["timestamp"] = pd.to_datetime(df_notes[charttime_col], format="mixed", errors="coerce")
     df_notes["has_exact_time"] = True
 
-# Compute hours from admission
 admit_ts = pd.Timestamp(bounds["admit"])
 disch_ts = pd.Timestamp(bounds["disch"])
 df_notes["hours_from_admit"] = (df_notes["timestamp"] - admit_ts).dt.total_seconds() / 3600
 
-# Apply category filter if set
 if category_filter:
     df_notes = df_notes[df_notes[category_col].isin(category_filter)]
     if df_notes.empty:
@@ -412,7 +408,7 @@ else:
     intervals = intervals.dropna()
 
     # Position each gap at the second note (when documentation resumed).
-    # A tall stem means a long silence; short stems indicate bursts of charting.
+    # A tall stem means a long silence. Short stems indicate bursts of charting.
     hours = sorted_notes["hours_from_admit"].to_numpy()
 
     interval_df = pd.DataFrame(

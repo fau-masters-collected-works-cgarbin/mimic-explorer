@@ -1,7 +1,7 @@
 """Data-fetching queries for the Clinical Timeline page.
 
-Each function takes explicit parameters (connection, table refs, column names)
-so they can be tested independently of Streamlit state.
+Each function takes its table refs and column names as parameters, so it can be
+tested independently of Streamlit state.
 """
 
 from concurrent.futures import ThreadPoolExecutor

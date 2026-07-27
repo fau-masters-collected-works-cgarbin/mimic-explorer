@@ -8,7 +8,7 @@ from pathlib import Path
 # Logical names are lowercase. None means the column doesn't exist in that version.
 # Most differences are just casing, but some columns have genuinely different names:
 #   MIMIC-III ETHNICITY -> MIMIC-IV race
-#   MIMIC-III icustay_id -> MIMIC-IV stay_id
+#   MIMIC-III ICUSTAY_ID -> MIMIC-IV stay_id
 #   MIMIC-III CURR_CAREUNIT -> MIMIC-IV careunit
 #   MIMIC-III STARTDATE/ENDDATE -> MIMIC-IV starttime/stoptime
 #   MIMIC-III ROW_ID -> MIMIC-IV note_id
@@ -147,7 +147,7 @@ class DatasetConfig:
         return tables
 
 
-# Default paths; override with MIMIC_III_PATH / MIMIC_IV_PATH environment variables
+# Default paths. Override with MIMIC_III_PATH, MIMIC_IV_PATH, or MIMIC_IV_NOTE_PATH.
 _MIMIC3_DEFAULT = Path.home() / "projects/mimic-iii/physionet.org/files/mimiciii/1.4"
 _MIMIC4_DEFAULT = Path.home() / "projects/mimic-iv/physionet.org/files/mimiciv/3.1"
 _MIMIC4_NOTE_DEFAULT = (
@@ -188,8 +188,8 @@ LARGE_TABLES = frozenset(
 # Tables (across both MIMIC versions) that have a hadm_id column, sourced from
 # docs/mimic_schema_reference.md. Used by the table-coverage stats: intersect
 # with the on-disk table list to skip the runtime column-probing that would
-# otherwise be needed. The schema reference is the source of truth -- a test
-# in tests/test_schema_reference.py verifies this set matches the doc.
+# otherwise be needed. A test in tests/test_schema_reference.py verifies this
+# set still matches the doc.
 HADM_TABLES = frozenset(
     {
         # Shared between MIMIC-III and MIMIC-IV

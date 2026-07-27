@@ -191,7 +191,7 @@ def _add_coverage_tasks(
     adm_ref = refs["admissions"]
     hadm_col = cfg.col("hadm_id")
 
-    # Build the list of tables to compute coverage for. Two filters:
+    # Build the list of tables to compute coverage for.
     # 1. Must be on disk. The user may have downloaded a partial dataset
     #    (e.g. MIMIC-IV without the ICU module).
     # 2. Must have a hadm_id column. Coverage is "what fraction of
@@ -230,7 +230,7 @@ def _add_data_quality_tasks(
     *,
     cfg: DatasetConfig,
 ) -> None:
-    """Data quality checks: missing timestamps and empty note text.
+    """How many notes and labs are missing timestamps, and how many notes are empty?
 
     These surface known data issues. MIMIC-III NOTEEVENTS has notes with
     NULL charttime (date-only entries) and empty text fields. MIMIC-IV-Note
@@ -254,7 +254,7 @@ def _assemble_stats(results: dict[str, Any]) -> dict[str, Any]:
 
     The shape of this dict is the on-disk cache contract. If you add,
     rename, or restructure any key here, existing cached JSON files in
-    .mimic_explorer_cache/ will be stale -- delete them or click
+    .mimic_explorer_cache/ will be stale. Delete them or click
     "Recalculate statistics" in the sidebar to rebuild.
     """
     out: dict[str, Any] = {}
@@ -305,7 +305,7 @@ def _assemble_stats(results: dict[str, Any]) -> dict[str, Any]:
 
 
 def _query_overview(cfg: DatasetConfig, tables: dict[str, Path]) -> dict:
-    """Core dataset metrics for the "at a glance" page.
+    """Core dataset metrics.
 
     Computes patient/admission/ICU counts, gender split, date range,
     mortality rate, and median length of stay. Uses a single connection
@@ -424,8 +424,7 @@ def _query_race_dist(adm_ref: str, race_col: str) -> list[dict]:
     """What is the race/ethnicity distribution across admissions?"""
     conn = get_connection()
     # MIMIC has 40+ race/ethnicity categories (many with small counts).
-    # Top 15 covers the meaningful groups; the rest are shown as a pie chart
-    # where too many tiny slices would be unreadable.
+    # Keep the top 15 by count. The rest are too small to read individually.
     df = conn.execute(f"""
         SELECT "{race_col}" AS race, count(*) AS count
         FROM {adm_ref}
@@ -521,7 +520,7 @@ def _query_coverage(
         conn,
         f"""
         SELECT round(100.0 * count(DISTINCT t."{hadm_col}") /
-               -- NULLIF: guard against division by zero if admissions is empty
+               -- NULLIF: avoid dividing by zero when there are no admissions
                NULLIF(count(DISTINCT a."{hadm_col}"), 0), 1)
         FROM {adm_ref} a
         LEFT JOIN {tbl_ref} t ON a."{hadm_col}" = t."{hadm_col}"

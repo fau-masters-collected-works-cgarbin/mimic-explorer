@@ -104,9 +104,9 @@ if "los_dist" in stats:
     st.caption(los_note)
 
 # -- Per-admission volume --
-# How much data is generated per hospital admission? This helps set
-# expectations for downstream analysis (e.g., "a typical admission has
-# ~15 notes but hundreds of lab results").
+# How much data is generated per hospital admission? Sets expectations
+# before you write a query (e.g., "a typical admission has ~15 notes but
+# hundreds of lab results").
 
 if "per_admission_volume" in stats:
     st.subheader("Per-Admission Volume")
@@ -194,7 +194,7 @@ if "table_coverage" in stats:
 
 # -- Data quality --
 # How complete and reliable is the data? Surfaces known issues like
-# missing timestamps and empty note text that could affect downstream analysis.
+# missing timestamps and empty note text that could skew the numbers you compute.
 
 if "data_quality" in stats:
     st.subheader("Data Quality Checks")

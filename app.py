@@ -1,4 +1,4 @@
-"""MIMIC Explorer -- Streamlit entry point with dataset selector and navigation."""
+"""MIMIC Explorer. Streamlit entry point with dataset selector and navigation."""
 
 import streamlit as st
 
@@ -18,7 +18,7 @@ pages = st.navigation(
     ]
 )
 
-# Sidebar widgets after navigation -- pages read st.session_state["dataset_key"]
+# Sidebar widgets after navigation, so pages can read st.session_state["dataset_key"]
 st.sidebar.selectbox(
     "Dataset",
     options=list(DATASETS.keys()),

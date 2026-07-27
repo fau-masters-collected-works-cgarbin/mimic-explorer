@@ -41,8 +41,6 @@ def column_info(conn: duckdb.DuckDBPyConnection, file_path: Path) -> list[dict[s
     """Get column names and inferred types for a CSV.gz file.
 
     Uses a LIMIT 0 query and reads column metadata from the cursor description.
-    DuckDB's DESCRIBE statement doesn't work with read_csv_auto() expressions,
-    so we use this workaround instead.
     """
     cursor = conn.execute(f"SELECT * FROM {table_ref(file_path)} LIMIT 0")
     return [{"name": col[0], "type": str(col[1])} for col in cursor.description]
@@ -71,9 +69,9 @@ def note_union_ref(note_tables: dict[str, Path]) -> str | None:
 
     MIMIC-IV-Note splits notes into separate tables (discharge, radiology) instead
     of the single NOTEEVENTS table in MIMIC-III. This function UNIONs them back
-    together with a synthetic ``category`` column so downstream code can treat
-    both versions uniformly. Returns a parenthesised subquery aliased as
-    ``noteevents``, or ``None`` if *note_tables* is empty.
+    together with a synthetic ``category`` column. Returns a parenthesized
+    subquery aliased as ``noteevents``, or ``None`` when no discharge or
+    radiology table is present.
     """
     if not note_tables:
         return None
@@ -98,8 +96,7 @@ def resolve_note_ref(cfg: DatasetConfig) -> str | None:
 
     MIMIC-III stores notes in a single NOTEEVENTS table inside the main dataset.
     MIMIC-IV moved notes to the separate MIMIC-IV-Note module, split across
-    discharge and radiology tables, which this function UNIONs back together so
-    callers can treat both versions uniformly.
+    discharge and radiology tables, which this function UNIONs back together.
     """
     if cfg.uppercase_filenames:
         path = cfg.find_tables().get("noteevents")
