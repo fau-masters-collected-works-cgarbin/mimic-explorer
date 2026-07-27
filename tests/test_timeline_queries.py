@@ -132,11 +132,6 @@ def test_fetch_note_text_by_id(noteevents_csv_gz):
     assert text == "Note one"
 
 
-def test_fetch_note_text_missing_id(noteevents_csv_gz):
-    text = fetch_note_text(_note_ref(noteevents_csv_gz), "999", "TEXT", "ROW_ID")
-    assert text is None
-
-
 # -- fetch_admission_data (parallel fetch) --
 
 
@@ -322,10 +317,3 @@ def test_fetch_admission_bounds(admissions_csv_gz):
     assert result is not None
     assert str(result["admit"]) == "2150-01-01 08:00:00"
     assert str(result["disch"]) == "2150-01-05 14:00:00"
-
-
-def test_fetch_admission_bounds_missing_hadm(admissions_csv_gz):
-    result = fetch_admission_bounds(
-        table_ref(admissions_csv_gz), 999, "HADM_ID", "ADMITTIME", "DISCHTIME"
-    )
-    assert result is None

@@ -81,7 +81,7 @@ def _compare(documented: dict[str, set[str]], actual: dict[str, set[str]]) -> li
 def test_hadm_tables_matches_schema_doc():
     """HADM_TABLES must match the union of hadm_id-bearing tables in the doc.
 
-    No MIMIC data needed -- this parses the schema reference and compares to
+    No MIMIC data needed. This parses the schema reference and compares to
     the constant. Catches drift in either direction (doc updated but constant
     stale, or constant updated but doc stale).
     """
